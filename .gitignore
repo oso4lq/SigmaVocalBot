@@ -1,0 +1,14 @@
+# Virtual environment
+sigmavenv/
+
+# Service account key
+sigma-serviceAccountKey.json
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Test results
+.coverage
+htmlcov/
