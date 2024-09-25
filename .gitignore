@@ -1,6 +1,9 @@
 # Virtual environment
 sigmavenv/
 
+# Environment variables
+.env
+
 # Service account key
 sigma-serviceAccountKey.json
 

@@ -1,15 +1,26 @@
+import os
+from dotenv import load_dotenv
 import firebase_admin
 from firebase_admin import credentials, firestore
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, CallbackContext, ConversationHandler, MessageHandler, Filters
+from telegram.ext import (
+    Updater, CommandHandler, CallbackQueryHandler, 
+    CallbackContext, ConversationHandler, MessageHandler, Filters)
 
-cred = credentials.Certificate('sigma-serviceAccountKey.json')
+# Load environment variables from .env file
+load_dotenv()
+
+# Access the environment variables
+TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
+GOOGLE_APPLICATION_CREDENTIALS = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
+
+# Initialize Firebase Admin SDK
+cred = credentials.Certificate(GOOGLE_APPLICATION_CREDENTIALS)
 firebase_admin.initialize_app(cred)
 db = firestore.client()
 
-TOKEN = '7215530612:AAFvaxWYTuBU02cwT2zHfCLuLqKpJ9YmtuA'
-
-updater = Updater(token=TOKEN, use_context=True)
+# Initialize the Telegram Bot
+updater = Updater(token=TELEGRAM_BOT_TOKEN, use_context=True)
 dispatcher = updater.dispatcher
 
 
