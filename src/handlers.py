@@ -14,6 +14,7 @@
 
 import logging
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 from typing import Dict, Any
 from telegram import (
     Update, 
@@ -35,8 +36,8 @@ from firebase_utils import (
     update_user_classes, 
     add_new_request,
     remove_user_class, 
-    update_class_status,
-    delete_class,
+    delete_class,  # Newly added
+    update_class_status,  # Can be removed if not used elsewhere
 )
 
 # Define Conversation States for NEWCLASS
@@ -47,6 +48,9 @@ ENTER_NAME, ENTER_REQUEST_MESSAGE = range(2)
 
 # Define Conversation States for CANCELCLASS
 SELECT_CLASS_TO_CANCEL, CONFIRM_CANCELLATION = range(2)
+
+# Define the time zone for Saint Petersburg
+ST_PETERSBURG = ZoneInfo('Europe/Moscow')  # Saint Petersburg uses Moscow's time zone
 
 # START Command Handler
 async def start(update: Update, context: CallbackContext):
@@ -71,7 +75,11 @@ async def start(update: Update, context: CallbackContext):
                 classes = get_classes_by_ids(db, classes_ids)
                 classes_text = ''
                 for class_data in classes:
-                    classes_text += f"- {class_data['startdate']} | Status: {class_data['status']}\n"
+                    # Convert UTC startdate to Saint Petersburg time zone
+                    utc_start = datetime.fromisoformat(class_data['startdate'].replace('Z', '+00:00'))
+                    spb_start = utc_start.astimezone(ST_PETERSBURG)
+                    formatted_start = spb_start.strftime('%d.%m.%Y %H:%M')
+                    classes_text += f"- {formatted_start} | Status: {class_data['status']}\n"
                 await context.bot.send_message(chat_id=chat_id, text=f"Your classes:\n{classes_text}")
                 # Present options
                 keyboard = [
@@ -125,13 +133,14 @@ async def newclass_start(update: Update, context: CallbackContext):
 
     # Generate available dates
     dates_buttons = []
-    today = datetime.now()
+    today = datetime.now(ST_PETERSBURG)
     for i in range(1, 8):
         day = today + timedelta(days=i)
         if day.weekday() < 5:  # Exclude weekends (0=Monday, ..., 6=Sunday)
-            date_str = day.strftime('%Y-%m-%d')
+            display_date_str = day.strftime('%d.%m.%Y')  # DD.MM.YYYY
+            callback_date_str = day.strftime('%Y-%m-%d')  # YYYY-MM-DD
             dates_buttons.append(
-                [InlineKeyboardButton(date_str, callback_data=f"DATE_{date_str}")]
+                [InlineKeyboardButton(display_date_str, callback_data=f"DATE_{callback_date_str}")]
             )
 
     dates_buttons.append([InlineKeyboardButton("Cancel", callback_data='CANCEL')])
@@ -167,9 +176,71 @@ async def select_time(update: Update, context: CallbackContext):
     query = update.callback_query
     selected_time = query.data.split('_')[1]
     context.user_data['selected_time'] = selected_time
-    await query.edit_message_text(text=f"Selected time: {selected_time}\nPlease enter any additional message or type 'skip' to continue.")
+    logging.info(f"Selected time: {selected_time}")
+    # Present message input with SKIP button
+    keyboard = [
+        [InlineKeyboardButton("SKIP", callback_data='SKIP')],
+        [InlineKeyboardButton("Cancel", callback_data='CANCEL')]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await query.edit_message_text(
+        text=f"Selected time: {selected_time}\nPlease enter any additional message or press 'SKIP' to continue.",
+        reply_markup=reply_markup
+    )
     return ENTER_MESSAGE
 
+# Handler for SKIP button in ENTER_MESSAGE state
+async def skip_message(update: Update, context: CallbackContext):
+    query = update.callback_query
+    await query.answer()
+    context.user_data['message'] = ''  # Set message as empty
+    await query.edit_message_text(text="Proceeding without an additional message.")
+    
+    # Proceed to save the class
+    user = query.from_user
+    db = context.bot_data['db']
+
+    try:
+        # Get user data from Firestore
+        user_data = get_user_by_telegram_username(db, user.username)
+        if not user_data:
+            await query.message.reply_text("User data not found. Please ensure your Telegram username is linked to your account.")
+            return ConversationHandler.END
+
+        # Prepare class data
+        class_data = {
+            'id': '',  # Will be set in add_new_class
+            'status': 'в ожидании',
+            'startdate': convert_to_utc(context.user_data['selected_date'], context.user_data['selected_time']),
+            'enddate': convert_to_utc(
+                context.user_data['selected_date'], 
+                context.user_data['selected_time'],
+                add_hours=1
+            ),
+            'message': context.user_data['message'],
+            'isMembershipUsed': False,
+            'userId': user_data['id'],  # Use userData.id from Firestore
+        }
+
+        # Add the new class to Firestore
+        new_class_id = add_new_class(db, class_data)
+        if new_class_id:
+            # Update user's classes list
+            success = update_user_classes(db, user_data['id'], new_class_id)
+            if success:
+                await query.message.reply_text("Your class was saved. Please wait for the confirmation.")
+            else:
+                await query.message.reply_text("Your class was saved, but we couldn't update your class list. Please contact support.")
+        else:
+            await query.message.reply_text("There was an error saving your class. Please try again.")
+
+    except Exception as e:
+        logging.error(f"Error in skip_message handler: {e}")
+        await query.message.reply_text("There was an error saving your class. Please try again.")
+
+    return ConversationHandler.END
+
+# Handler for text input in ENTER_MESSAGE state
 async def enter_message(update: Update, context: CallbackContext):
     user_message = update.message.text
     if user_message.lower() != 'skip':
@@ -191,8 +262,12 @@ async def enter_message(update: Update, context: CallbackContext):
         class_data = {
             'id': '',  # Will be set in add_new_class
             'status': 'в ожидании',
-            'startdate': f"{context.user_data['selected_date']}T{context.user_data['selected_time']}:00Z",
-            'enddate': f"{context.user_data['selected_date']}T{int(context.user_data['selected_time'][:2]) + 1:02d}:00Z",
+            'startdate': convert_to_utc(context.user_data['selected_date'], context.user_data['selected_time']),
+            'enddate': convert_to_utc(
+                context.user_data['selected_date'], 
+                context.user_data['selected_time'],
+                add_hours=1
+            ),
             'message': context.user_data['message'],
             'isMembershipUsed': False,
             'userId': user_data['id'],  # Use userData.id from Firestore
@@ -216,6 +291,20 @@ async def enter_message(update: Update, context: CallbackContext):
 
     return ConversationHandler.END
 
+# Function to convert local time to UTC ISO8601 string
+def convert_to_utc(date_str: str, time_str: str, add_hours: int = 0) -> str:
+    """
+    Converts a date and time string in 'YYYY-MM-DD' and 'HH:MM' format from
+    Saint Petersburg time zone to UTC ISO8601 string.
+    Optionally adds hours to the time.
+    """
+    local_dt = datetime.strptime(f"{date_str} {time_str}", "%Y-%m-%d %H:%M")
+    local_dt = local_dt.replace(tzinfo=ST_PETERSBURG)
+    if add_hours:
+        local_dt += timedelta(hours=add_hours)
+    utc_dt = local_dt.astimezone(ZoneInfo('UTC'))
+    return utc_dt.isoformat()
+
 # Define the NEWCLASS Conversation Handler
 def newclass_conv_handler() -> ConversationHandler:
     return ConversationHandler(
@@ -223,7 +312,10 @@ def newclass_conv_handler() -> ConversationHandler:
         states={
             SELECT_DATE: [CallbackQueryHandler(select_date, pattern='^DATE_')],
             SELECT_TIME: [CallbackQueryHandler(select_time, pattern='^TIME_')],
-            ENTER_MESSAGE: [MessageHandler(filters.TEXT & ~filters.COMMAND, enter_message)]
+            ENTER_MESSAGE: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, enter_message),
+                CallbackQueryHandler(skip_message, pattern='^SKIP$')
+            ]
         },
         fallbacks=[CallbackQueryHandler(button_handler, pattern='^CANCEL$')],
     )
@@ -240,13 +332,19 @@ async def enter_name(update: Update, context: CallbackContext):
         await update.message.reply_text("You must enter your name before submitting the request.")
         return ENTER_NAME
     context.user_data['name'] = name
-    await update.message.reply_text("Please enter any message or type 'skip' to continue:")
+    await update.message.reply_text(
+        "Please enter any message or press 'SKIP' to continue.",
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("SKIP", callback_data='SKIP')],
+            [InlineKeyboardButton("Cancel", callback_data='CANCEL')]
+        ])
+    )
     return ENTER_REQUEST_MESSAGE
 
 async def enter_request_message(update: Update, context: CallbackContext):
-    message = update.message.text
-    if message.lower() != 'skip':
-        context.user_data['message'] = message
+    user_message = update.message.text
+    if user_message.lower() != 'skip':
+        context.user_data['message'] = user_message
     else:
         context.user_data['message'] = ''
     # Save the request to Firestore
@@ -302,7 +400,11 @@ async def cancelclass_start(update: Update, context: CallbackContext):
         classes_buttons = []
         for class_data in classes:
             class_id = class_data.get('id')
-            class_info = f"{class_data['startdate']} | Status: {class_data['status']}"
+            # Convert UTC startdate to Saint Petersburg time zone for display
+            utc_start = datetime.fromisoformat(class_data['startdate'].replace('Z', '+00:00'))
+            spb_start = utc_start.astimezone(ST_PETERSBURG)
+            formatted_start = spb_start.strftime('%d.%m.%Y %H:%M')
+            class_info = f"{formatted_start} | Status: {class_data['status']}"
             classes_buttons.append(
                 [InlineKeyboardButton(class_info, callback_data=f"CANCEL_{class_id}")]
             )
@@ -322,7 +424,11 @@ async def select_class_to_cancel(update: Update, context: CallbackContext):
     class_doc = db.collection('classes').document(class_id).get()
     if class_doc.exists:
         class_data = class_doc.to_dict()
-        class_info = f"{class_data['startdate']} | Status: {class_data['status']}"
+        # Convert UTC startdate to Saint Petersburg time zone for display
+        utc_start = datetime.fromisoformat(class_data['startdate'].replace('Z', '+00:00'))
+        spb_start = utc_start.astimezone(ST_PETERSBURG)
+        formatted_start = spb_start.strftime('%d.%m.%Y %H:%M')
+        class_info = f"{formatted_start} | Status: {class_data['status']}"
         await query.edit_message_text(
             text=f"Are you sure you want to cancel this class?\n{class_info}",
             reply_markup=InlineKeyboardMarkup([
