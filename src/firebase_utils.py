@@ -14,8 +14,9 @@ from typing import Optional, List, Dict, Any
 
 # Initialize Firebase Admin SDK (Ensure this is called once)
 def initialize_firebase(service_account_key_path: str) -> firestore.client:
-    cred = credentials.Certificate(service_account_key_path)
-    firebase_admin.initialize_app(cred)
+    if not firebase_admin._apps:
+        cred = credentials.Certificate(service_account_key_path)
+        firebase_admin.initialize_app(cred)
     return firestore.client()
 
 # Fetch user data by Telegram username
@@ -33,7 +34,13 @@ def get_classes_by_ids(db: firestore.client, class_ids: List[str]) -> List[Dict[
     for class_id in class_ids:
         class_doc = db.collection('classes').document(str(class_id)).get()
         if class_doc.exists:
-            classes.append(class_doc.to_dict())
+
+            # classes.append(class_doc.to_dict())
+
+            class_data = class_doc.to_dict()
+            class_data['id'] = class_doc.id  # Ensure the class ID is included
+            classes.append(class_data)
+            
     return classes
 
 # Fetch occupied time slots for a specific date

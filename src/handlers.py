@@ -17,12 +17,22 @@ from datetime import datetime, timedelta
 from typing import Dict, Any
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
-    CallbackContext, ConversationHandler, CallbackQueryHandler, CommandHandler, MessageHandler, Filters
+    CallbackContext, 
+    ConversationHandler, 
+    CallbackQueryHandler, 
+    CommandHandler, 
+    MessageHandler, 
+    Filters
 )
 from firebase_utils import (
-    get_user_by_telegram_username, get_classes_by_ids, get_occupied_time_slots,
-    add_new_class, update_user_classes, add_new_request,
-    remove_user_class, update_class_status
+    get_user_by_telegram_username, 
+    get_classes_by_ids, 
+    get_occupied_time_slots,
+    add_new_class, 
+    update_user_classes, 
+    add_new_request,
+    remove_user_class, 
+    update_class_status
 )
 
 # Define Conversation States for NEWCLASS
@@ -170,6 +180,8 @@ def enter_message(update: Update, context: CallbackContext, db: Any):
             'enddate': f"{context.user_data['selected_date']}T{int(context.user_data['selected_time'][:2]) + 1:02d}:00Z",
             'message': context.user_data['message'],
             'isMembershipUsed': False,
+
+            # May require changing! Need to store user's ID from Firestore DB, not from Telegram.
             'userId': str(user.id)  # Store Telegram user ID as string
         }
         new_class_id = add_new_class(db, class_data)

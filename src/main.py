@@ -8,8 +8,10 @@ import logging
 from dotenv import load_dotenv
 from telegram.ext import Updater, CommandHandler, CallbackQueryHandler
 from handlers import (
-    start, button_handler,
-    newclass_conv_handler, newrequest_conv_handler,
+    start, 
+    button_handler,
+    newclass_conv_handler, 
+    newrequest_conv_handler,
     cancelclass_conv_handler
 )
 from firebase_utils import initialize_firebase
@@ -30,7 +32,11 @@ if not GOOGLE_APPLICATION_CREDENTIALS:
 # Initialize Logging
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO
+    level=logging.INFO,
+    handlers=[
+        logging.FileHandler("bot.log"),
+        logging.StreamHandler()
+    ]
 )
 logger = logging.getLogger(__name__)
 
