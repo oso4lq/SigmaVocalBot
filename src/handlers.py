@@ -35,7 +35,8 @@ from firebase_utils import (
     update_user_classes, 
     add_new_request,
     remove_user_class, 
-    update_class_status
+    update_class_status,
+    delete_class,
 )
 
 # Define Conversation States for NEWCLASS
@@ -175,35 +176,44 @@ async def enter_message(update: Update, context: CallbackContext):
         context.user_data['message'] = user_message
     else:
         context.user_data['message'] = ''
-    # Proceed to save the class
-    user = update.message.from_user
 
+    user = update.message.from_user
     db = context.bot_data['db']
 
     try:
+        # Get user data from Firestore
+        user_data = get_user_by_telegram_username(db, user.username)
+        if not user_data:
+            await update.message.reply_text("User data not found. Please ensure your Telegram username is linked to your account.")
+            return ConversationHandler.END
+
+        # Prepare class data
         class_data = {
-            'status': 'Pending',
+            'id': '',  # Will be set in add_new_class
+            'status': 'в ожидании',
             'startdate': f"{context.user_data['selected_date']}T{context.user_data['selected_time']}:00Z",
             'enddate': f"{context.user_data['selected_date']}T{int(context.user_data['selected_time'][:2]) + 1:02d}:00Z",
             'message': context.user_data['message'],
             'isMembershipUsed': False,
-
-            # attention needed here!
-            'userId': str(user.id)  # Store Telegram user ID as string
+            'userId': user_data['id'],  # Use userData.id from Firestore
         }
+
+        # Add the new class to Firestore
         new_class_id = add_new_class(db, class_data)
         if new_class_id:
-            # Optionally update user's classes list
-            success = update_user_classes(db, str(user.id), new_class_id)
+            # Update user's classes list
+            success = update_user_classes(db, user_data['id'], new_class_id)
             if success:
                 await update.message.reply_text("Your class was saved. Please wait for the confirmation.")
             else:
                 await update.message.reply_text("Your class was saved, but we couldn't update your class list. Please contact support.")
         else:
             await update.message.reply_text("There was an error saving your class. Please try again.")
+
     except Exception as e:
         logging.error(f"Error in enter_message handler: {e}")
         await update.message.reply_text("There was an error saving your class. Please try again.")
+
     return ConversationHandler.END
 
 # Define the NEWCLASS Conversation Handler
@@ -278,30 +288,30 @@ async def cancelclass_start(update: Update, context: CallbackContext):
     await query.answer()
     user = query.from_user
     db = context.bot_data['db']
-    user_ref = db.collection('users').document(str(user.id))
-    user_doc = user_ref.get()
-    if user_doc.exists:
-        user_data = user_doc.to_dict()
-        classes_ids = user_data.get('classes', [])
-        if classes_ids:
-            # Fetch user's classes
-            classes = get_classes_by_ids(db, classes_ids)
-            classes_buttons = []
-            for class_data in classes:
-                class_id = class_data.get('id') or class_data.get('class_id') or class_data.get('classId')
-                class_info = f"{class_data['startdate']} | Status: {class_data['status']}"
-                classes_buttons.append(
-                    [InlineKeyboardButton(class_info, callback_data=f"CANCEL_{class_id}")]
-                )
-            classes_buttons.append([InlineKeyboardButton("Cancel", callback_data='CANCEL')])
-            reply_markup = InlineKeyboardMarkup(classes_buttons)
-            await query.edit_message_text(text="Choose a class you would like to cancel:", reply_markup=reply_markup)
-            return SELECT_CLASS_TO_CANCEL
-        else:
-            await query.edit_message_text(text="You don't have any classes signed up for.")
-            return ConversationHandler.END
-    else:
+
+    # Get user data
+    user_data = get_user_by_telegram_username(db, user.username)
+    if not user_data:
         await query.edit_message_text(text="User data not found.")
+        return ConversationHandler.END
+
+    classes_ids = user_data.get('classes', [])
+    if classes_ids:
+        # Fetch user's classes
+        classes = get_classes_by_ids(db, classes_ids)
+        classes_buttons = []
+        for class_data in classes:
+            class_id = class_data.get('id')
+            class_info = f"{class_data['startdate']} | Status: {class_data['status']}"
+            classes_buttons.append(
+                [InlineKeyboardButton(class_info, callback_data=f"CANCEL_{class_id}")]
+            )
+        classes_buttons.append([InlineKeyboardButton("Cancel", callback_data='CANCEL')])
+        reply_markup = InlineKeyboardMarkup(classes_buttons)
+        await query.edit_message_text(text="Choose a class you would like to cancel:", reply_markup=reply_markup)
+        return SELECT_CLASS_TO_CANCEL
+    else:
+        await query.edit_message_text(text="You don't have any classes signed up for.")
         return ConversationHandler.END
 
 async def select_class_to_cancel(update: Update, context: CallbackContext):
@@ -332,19 +342,28 @@ async def confirm_cancellation(update: Update, context: CallbackContext):
     if not class_id:
         await query.edit_message_text(text="No class selected for cancellation.")
         return ConversationHandler.END
+
     db = context.bot_data['db']
+
+    # Get user data
+    user_data = get_user_by_telegram_username(db, user.username)
+    if not user_data:
+        await query.edit_message_text(text="User data not found.")
+        return ConversationHandler.END
+
     try:
         # Remove class from user's classes
-        success_remove = remove_user_class(db, str(user.id), class_id)
-        # Update class status to 'Cancelled'
-        success_update = update_class_status(db, class_id, 'Cancelled')
-        if success_remove and success_update:
+        success_remove = remove_user_class(db, user_data['id'], class_id)
+        # Delete class document from Firestore
+        success_delete = delete_class(db, class_id)
+        if success_remove and success_delete:
             await query.edit_message_text(text="Your class has been cancelled.")
         else:
             await query.edit_message_text(text="There was an error cancelling your class. Please try again.")
     except Exception as e:
         logging.error(f"Error in confirm_cancellation handler: {e}")
         await query.edit_message_text(text="There was an error cancelling your class. Please try again.")
+
     return ConversationHandler.END
 
 # Define the CANCELCLASS Conversation Handler

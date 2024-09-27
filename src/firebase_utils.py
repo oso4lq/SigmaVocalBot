@@ -25,7 +25,10 @@ def get_user_by_telegram_username(db: firestore.client, telegram_username: str) 
     query = users_ref.where('telegram', '==', telegram_username).stream()
     user_docs = list(query)
     if user_docs:
-        return user_docs[0].to_dict()
+        user_doc = user_docs[0]
+        user_data = user_doc.to_dict()
+        user_data['id'] = user_doc.id  # Include the document ID
+        return user_data
     return None
 
 # Fetch classes by class IDs
@@ -59,12 +62,24 @@ def get_occupied_time_slots(db: firestore.client, selected_date: str) -> List[st
 # Add a new class
 def add_new_class(db: firestore.client, class_data: Dict[str, Any]) -> Optional[str]:
     try:
-        new_class_ref = db.collection('classes').add(class_data)
-        return new_class_ref[1].id  # Returns the document ID
+        new_class_ref = db.collection('classes').document()  # Create a new document reference with auto-generated ID
+        class_data['id'] = new_class_ref.id  # Set the 'id' field in class_data
+        new_class_ref.set(class_data)
+        return new_class_ref.id  # Return the document ID
     except Exception as e:
         print(f"Error adding new class: {e}")
         return None
 
+# Delete a class
+def delete_class(db: firestore.client, class_id: str) -> bool:
+    try:
+        class_ref = db.collection('classes').document(class_id)
+        class_ref.delete()
+        return True
+    except Exception as e:
+        print(f"Error deleting class: {e}")
+        return False
+    
 # Update user's classes list
 def update_user_classes(db: firestore.client, user_id: str, class_id: str) -> bool:
     try:
