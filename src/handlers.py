@@ -12,7 +12,6 @@
 
 # Error Handling: Errors are logged using Python's logging module, and users are notified appropriately.
 
-# handlers.py
 import logging
 from datetime import datetime, timedelta
 from typing import Dict, Any
@@ -25,7 +24,6 @@ from telegram.ext import (
     CallbackContext, 
     ConversationHandler, 
     CallbackQueryHandler, 
-    CommandHandler, 
     MessageHandler, 
     filters
 )
@@ -61,7 +59,9 @@ async def start(update: Update, context: CallbackContext):
 
     # Fetch UserData from Firestore
     try:
+        logging.info(f"Looking up user with telegram username: {user.username}")
         user_data = get_user_by_telegram_username(db, user.username)
+        logging.info(f"User data found: {user_data}")
         if user_data:
             # User exists
             classes_ids = user_data.get('classes', [])
@@ -102,21 +102,19 @@ async def start(update: Update, context: CallbackContext):
         logging.error(f"Error in start handler: {e}")
         await context.bot.send_message(chat_id=chat_id, text="An error occurred while fetching your data. Please try again later.")
 
-# Button Handler
+# Button Handler (Handles generic buttons not managed by ConversationHandlers)
 async def button_handler(update: Update, context: CallbackContext):
     query = update.callback_query
     await query.answer()
     data = query.data
 
-    if data == 'NEWCLASS':
-        return await newclass_start(update, context)
-    elif data == 'CANCELCLASS':
-        return await cancelclass_start(update, context)
-    elif data == 'NEWREQUEST':
-        return await newrequest_start(update, context)
-    elif data == 'CANCEL':
+    if data == 'CANCEL':
         # Optionally, you can send a cancellation message
         await query.edit_message_text(text="Operation cancelled.")
+        return ConversationHandler.END
+    else:
+        # Handle other generic buttons if any
+        await query.edit_message_text(text="Unknown action. Please try again.")
         return ConversationHandler.END
 
 # NEWCLASS Handlers
@@ -144,6 +142,7 @@ async def select_date(update: Update, context: CallbackContext):
     query = update.callback_query
     selected_date = query.data.split('_')[1]
     context.user_data['selected_date'] = selected_date
+    logging.info(f"Selected date: {selected_date}")
     await query.edit_message_text(text=f"Selected date: {selected_date}\nPlease select a time slot.")
 
     # Generate time slots

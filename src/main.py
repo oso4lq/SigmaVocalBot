@@ -49,10 +49,6 @@ logger = logging.getLogger(__name__)
 # Initialize Firebase
 db = initialize_firebase(GOOGLE_APPLICATION_CREDENTIALS)
 
-# Initialize the Telegram Bot 13.15
-# updater = Updater(token=TELEGRAM_BOT_TOKEN, use_context=True)
-# dispatcher = updater.dispatcher
-
 # Initialize the Telegram Bot Application
 application = ApplicationBuilder().token(TELEGRAM_BOT_TOKEN).build()
 
@@ -64,9 +60,6 @@ application.bot_data['db'] = db
 # START Command Handler
 application.add_handler(CommandHandler('start', start))
 
-# Button Callback Handler
-application.add_handler(CallbackQueryHandler(button_handler))
-
 # NEWCLASS Conversation Handler
 application.add_handler(newclass_conv_handler())
 
@@ -76,10 +69,8 @@ application.add_handler(newrequest_conv_handler())
 # CANCELCLASS Conversation Handler
 application.add_handler(cancelclass_conv_handler())
 
-# CANCEL Command Handler (optional if you have a separate /cancel command)
-# Uncomment below if you want to handle /cancel command globally
-# from telegram.ext import CommandHandler
-# dispatcher.add_handler(CommandHandler('cancel', cancel))
+# Button Callback Handler (Handles generic buttons not managed by ConversationHandlers)
+application.add_handler(CallbackQueryHandler(button_handler, pattern='^(?!NEWCLASS$|CANCELCLASS$|NEWREQUEST$).*'))
 
 # Error Handler
 async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
