@@ -36,8 +36,8 @@ from firebase_utils import (
     update_user_classes, 
     add_new_request,
     remove_user_class, 
-    delete_class,  # Newly added
-    update_class_status,  # Can be removed if not used elsewhere
+    delete_class,
+    update_class_status,
 )
 
 # Define Conversation States for NEWCLASS
@@ -81,18 +81,20 @@ async def start(update: Update, context: CallbackContext):
                     formatted_start = spb_start.strftime('%d.%m.%Y %H:%M')
                     classes_text += f"- {formatted_start} | Status: {class_data['status']}\n"
                 await context.bot.send_message(chat_id=chat_id, text=f"Your classes:\n{classes_text}")
-                # Present options
-                keyboard = [
-                    [InlineKeyboardButton("Sign Up for New Class", callback_data='NEWCLASS')],
-                    [InlineKeyboardButton("Cancel a Class", callback_data='CANCELCLASS')],
-                    [InlineKeyboardButton("Cancel", callback_data='CANCEL')]
-                ]
             else:
                 await context.bot.send_message(chat_id=chat_id, text="You don't have any classes scheduled.")
-                keyboard = [
-                    [InlineKeyboardButton("Sign Up for New Class", callback_data='NEWCLASS')],
-                    [InlineKeyboardButton("Cancel", callback_data='CANCEL')]
-                ]
+            # Display membership points
+            membership_points = user_data.get('membership', 0)
+            if membership_points:
+                await context.bot.send_message(chat_id=chat_id, text=f"Membership: you have {membership_points} points left.")
+            else:
+                await context.bot.send_message(chat_id=chat_id, text="Membership: 0. To buy membership points, please contact the tutor.")
+            # Present options
+            keyboard = [
+                [InlineKeyboardButton("Sign Up for New Class", callback_data='NEWCLASS')],
+                [InlineKeyboardButton("Cancel a Class", callback_data='CANCELCLASS')],
+                [InlineKeyboardButton("Cancel", callback_data='CANCEL')]
+            ]
             reply_markup = InlineKeyboardMarkup(keyboard)
             await context.bot.send_message(chat_id=chat_id, text="What would you like to do next?", reply_markup=reply_markup)
         else:
@@ -207,6 +209,14 @@ async def skip_message(update: Update, context: CallbackContext):
             await query.message.reply_text("User data not found. Please ensure your Telegram username is linked to your account.")
             return ConversationHandler.END
 
+        # Check membership points
+        membership_points = user_data.get('membership', 0)
+        if membership_points > 0:
+            is_membership_used = True
+            membership_points -= 1  # Decrement membership points
+        else:
+            is_membership_used = False
+
         # Prepare class data
         class_data = {
             'id': '',  # Will be set in add_new_class
@@ -218,21 +228,37 @@ async def skip_message(update: Update, context: CallbackContext):
                 add_hours=1
             ),
             'message': context.user_data['message'],
-            'isMembershipUsed': False,
+            'isMembershipUsed': is_membership_used,
             'userId': user_data['id'],  # Use userData.id from Firestore
         }
 
-        # Add the new class to Firestore
-        new_class_id = add_new_class(db, class_data)
-        if new_class_id:
-            # Update user's classes list
-            success = update_user_classes(db, user_data['id'], new_class_id)
-            if success:
-                await query.message.reply_text("Your class was saved. Please wait for the confirmation.")
-            else:
-                await query.message.reply_text("Your class was saved, but we couldn't update your class list. Please contact support.")
-        else:
-            await query.message.reply_text("There was an error saving your class. Please try again.")
+        # Start a batch
+        batch = db.batch()
+
+        # Create a new document reference for the class
+        class_ref = db.collection('classes').document()
+        class_data['id'] = class_ref.id
+
+        # Add the class to the batch
+        batch.set(class_ref, class_data)
+
+        # Update user's classes list
+        updated_classes = user_data.get('classes', [])
+        updated_classes.append(class_ref.id)
+        user_update_data = {
+            'classes': updated_classes
+        }
+        if is_membership_used:
+            user_update_data['membership'] = membership_points
+
+        # Update user data in the batch
+        user_ref = db.collection('users').document(user_data['id'])
+        batch.update(user_ref, user_update_data)
+
+        # Commit the batch
+        batch.commit()
+
+        await query.message.reply_text("Your class was saved. Please wait for the confirmation.")
 
     except Exception as e:
         logging.error(f"Error in skip_message handler: {e}")
@@ -258,6 +284,14 @@ async def enter_message(update: Update, context: CallbackContext):
             await update.message.reply_text("User data not found. Please ensure your Telegram username is linked to your account.")
             return ConversationHandler.END
 
+        # Check membership points
+        membership_points = user_data.get('membership', 0)
+        if membership_points > 0:
+            is_membership_used = True
+            membership_points -= 1  # Decrement membership points
+        else:
+            is_membership_used = False
+
         # Prepare class data
         class_data = {
             'id': '',  # Will be set in add_new_class
@@ -269,21 +303,37 @@ async def enter_message(update: Update, context: CallbackContext):
                 add_hours=1
             ),
             'message': context.user_data['message'],
-            'isMembershipUsed': False,
+            'isMembershipUsed': is_membership_used,
             'userId': user_data['id'],  # Use userData.id from Firestore
         }
 
-        # Add the new class to Firestore
-        new_class_id = add_new_class(db, class_data)
-        if new_class_id:
-            # Update user's classes list
-            success = update_user_classes(db, user_data['id'], new_class_id)
-            if success:
-                await update.message.reply_text("Your class was saved. Please wait for the confirmation.")
-            else:
-                await update.message.reply_text("Your class was saved, but we couldn't update your class list. Please contact support.")
-        else:
-            await update.message.reply_text("There was an error saving your class. Please try again.")
+        # Start a batch
+        batch = db.batch()
+
+        # Create a new document reference for the class
+        class_ref = db.collection('classes').document()
+        class_data['id'] = class_ref.id
+
+        # Add the class to the batch
+        batch.set(class_ref, class_data)
+
+        # Update user's classes list
+        updated_classes = user_data.get('classes', [])
+        updated_classes.append(class_ref.id)
+        user_update_data = {
+            'classes': updated_classes
+        }
+        if is_membership_used:
+            user_update_data['membership'] = membership_points
+
+        # Update user data in the batch
+        user_ref = db.collection('users').document(user_data['id'])
+        batch.update(user_ref, user_update_data)
+
+        # Commit the batch
+        batch.commit()
+
+        await update.message.reply_text("Your class was saved. Please wait for the confirmation.")
 
     except Exception as e:
         logging.error(f"Error in enter_message handler: {e}")
@@ -375,7 +425,10 @@ def newrequest_conv_handler() -> ConversationHandler:
         entry_points=[CallbackQueryHandler(newrequest_start, pattern='^NEWREQUEST$')],
         states={
             ENTER_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, enter_name)],
-            ENTER_REQUEST_MESSAGE: [MessageHandler(filters.TEXT & ~filters.COMMAND, enter_request_message)]
+            ENTER_REQUEST_MESSAGE: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, enter_request_message),
+                CallbackQueryHandler(skip_message, pattern='^SKIP$')
+            ]
         },
         fallbacks=[CallbackQueryHandler(button_handler, pattern='^CANCEL$')],
     )
@@ -424,13 +477,44 @@ async def select_class_to_cancel(update: Update, context: CallbackContext):
     class_doc = db.collection('classes').document(class_id).get()
     if class_doc.exists:
         class_data = class_doc.to_dict()
+        context.user_data['selected_class_data'] = class_data  # Store for later use
+
         # Convert UTC startdate to Saint Petersburg time zone for display
         utc_start = datetime.fromisoformat(class_data['startdate'].replace('Z', '+00:00'))
         spb_start = utc_start.astimezone(ST_PETERSBURG)
         formatted_start = spb_start.strftime('%d.%m.%Y %H:%M')
         class_info = f"{formatted_start} | Status: {class_data['status']}"
+
+        # Calculate hours difference
+        utc_now = datetime.utcnow().replace(tzinfo=ZoneInfo('UTC'))
+        hours_difference = (utc_start - utc_now).total_seconds() / 3600
+
+        # Determine the message to display
+        message = ''
+        if (
+            hours_difference <= 24 and
+            class_data.get('isMembershipUsed', False) and
+            class_data.get('status') == 'подтверждено'
+        ):
+            message = (
+                "The teacher has already confirmed this class and it starts in less than 24 hours. "
+                "By canceling this class, you will lose the class from your membership."
+            )
+        elif (
+            class_data.get('isMembershipUsed', False) and
+            class_data.get('status') != 'выполнено'
+        ):
+            message = "You can cancel a lesson without losing your membership points."
+        else:
+            message = ''
+
+        # Append the message
+        full_text = f"Are you sure you want to cancel this class?\n{class_info}"
+        if message:
+            full_text += f"\n\n{message}"
+
         await query.edit_message_text(
-            text=f"Are you sure you want to cancel this class?\n{class_info}",
+            text=full_text,
             reply_markup=InlineKeyboardMarkup([
                 [InlineKeyboardButton("Yes, Cancel", callback_data='CONFIRM_CANCEL')],
                 [InlineKeyboardButton("No, Go Back", callback_data='CANCEL')]
@@ -458,14 +542,50 @@ async def confirm_cancellation(update: Update, context: CallbackContext):
         return ConversationHandler.END
 
     try:
-        # Remove class from user's classes
-        success_remove = remove_user_class(db, user_data['id'], class_id)
-        # Delete class document from Firestore
-        success_delete = delete_class(db, class_id)
-        if success_remove and success_delete:
-            await query.edit_message_text(text="Your class has been cancelled.")
-        else:
-            await query.edit_message_text(text="There was an error cancelling your class. Please try again.")
+        # Get the latest class data
+        class_doc_ref = db.collection('classes').document(class_id)
+        class_doc = class_doc_ref.get()
+        if not class_doc.exists:
+            await query.edit_message_text(text="Class not found.")
+            return ConversationHandler.END
+        class_data = class_doc.to_dict()
+
+        # Calculate hours difference
+        utc_now = datetime.utcnow().replace(tzinfo=ZoneInfo('UTC'))
+        class_start = datetime.fromisoformat(class_data['startdate'].replace('Z', '+00:00'))
+        hours_difference = (class_start - utc_now).total_seconds() / 3600
+
+        # Determine if refund applies
+        refund_membership = False
+        if class_data.get('isMembershipUsed', False):
+            if hours_difference >= 24:
+                refund_membership = True
+            elif class_data.get('status') in ['в ожидании', 'отменено']:
+                refund_membership = True
+
+        # Start a batch
+        batch = db.batch()
+
+        # Delete class document
+        batch.delete(class_doc_ref)
+
+        # Update user's classes array
+        user_ref = db.collection('users').document(user_data['id'])
+        updated_classes = user_data.get('classes', [])
+        if class_id in updated_classes:
+            updated_classes.remove(class_id)
+        # Prepare user data update
+        user_update_data = {'classes': updated_classes}
+        if refund_membership:
+            user_update_data['membership'] = user_data.get('membership', 0) + 1
+
+        batch.update(user_ref, user_update_data)
+
+        # Commit the batch
+        batch.commit()
+
+        await query.edit_message_text(text="Your class has been cancelled.")
+
     except Exception as e:
         logging.error(f"Error in confirm_cancellation handler: {e}")
         await query.edit_message_text(text="There was an error cancelling your class. Please try again.")
