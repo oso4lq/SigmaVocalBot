@@ -34,7 +34,7 @@ async def newclass_start(update: Update, context: CallbackContext):
     # Generate available dates
     dates_buttons = []
     today = datetime.now(ST_PETERSBURG)
-    for i in range(1, 8):
+    for i in range(0, 7):
         day = today + timedelta(days=i)
         if day.weekday() < 5:  # Exclude weekends (0=Monday, ..., 6=Sunday)
             display_date_str = day.strftime('%d.%m.%Y')  # DD.MM.YYYY
@@ -61,10 +61,12 @@ async def select_date(update: Update, context: CallbackContext):
     occupied_slots = get_occupied_time_slots(db, selected_date)
 
     for hour in range(8, 20):
-        time_slot = f"{hour:02d}:00"
-        if time_slot not in occupied_slots:
+        start_time = f"{hour:02d}:00"
+        end_time = f"{(hour + 1):02d}:00"
+        time_slot_display = f"{start_time} - {end_time}"
+        if start_time not in occupied_slots:
             times_buttons.append(
-                [InlineKeyboardButton(time_slot, callback_data=f"TIME_{time_slot}")]
+                [InlineKeyboardButton(time_slot_display, callback_data=f"TIME_{start_time}")]
             )
 
     times_buttons.append([InlineKeyboardButton("Cancel", callback_data='CANCEL')])

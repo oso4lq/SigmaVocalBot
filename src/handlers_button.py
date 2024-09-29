@@ -12,9 +12,12 @@ async def button_handler(update: Update, context: CallbackContext):
     data = query.data
 
     if data == 'CANCEL':
-        # Optionally, you can send a cancellation message
+        # Send a cancellation message
         await query.edit_message_text(text="Operation cancelled.")
         return ConversationHandler.END
+    elif data == 'SKIP':
+        # Handle 'SKIP' action
+        pass
     else:
         # Handle other generic buttons if any
         await query.edit_message_text(text="Unknown action. Please try again.")

@@ -23,7 +23,9 @@ async def start(update: Update, context: CallbackContext):
         user_data = get_user_by_telegram_username(db, user.username)
         logging.info(f"User data found: {user_data}")
         if user_data:
-            # User exists
+            # Check if user is admin
+            is_admin = user_data.get('isadmin', False)
+            # Get created by this user class IDs
             classes_ids = user_data.get('classes', [])
             if classes_ids:
                 # Fetch user's classes
@@ -50,8 +52,16 @@ async def start(update: Update, context: CallbackContext):
             keyboard = [
                 [InlineKeyboardButton("Sign Up for New Class", callback_data='NEWCLASS')],
                 [InlineKeyboardButton("Cancel a Class", callback_data='CANCELCLASS')],
-                [InlineKeyboardButton("Cancel", callback_data='CANCEL')]
+                # [InlineKeyboardButton("Cancel", callback_data='CANCEL')]
             ]
+
+            # If user is admin, add the "See my schedule" button
+            if is_admin:
+                keyboard.append([InlineKeyboardButton("See my schedule", callback_data='SCHEDULE')])
+
+            # Add the Cancel button
+            keyboard.append([InlineKeyboardButton("Cancel", callback_data='CANCEL')])
+
             reply_markup = InlineKeyboardMarkup(keyboard)
             await context.bot.send_message(chat_id=chat_id, text="What would you like to do next?", reply_markup=reply_markup)
         else:

@@ -19,6 +19,7 @@ from handlers_button import button_handler
 from handlers_newclass import newclass_conv_handler
 from handlers_newrequest import newrequest_conv_handler
 from handlers_cancelclass import cancelclass_conv_handler
+from handlers_schedule import schedule_conv_handler
 
 # Load environment variables from .env file
 load_dotenv()
@@ -67,8 +68,12 @@ application.add_handler(newrequest_conv_handler())
 # CANCELCLASS Conversation Handler
 application.add_handler(cancelclass_conv_handler())
 
+# SCHEDULE Conversation Handler
+application.add_handler(schedule_conv_handler())
+
 # Button Callback Handler (Handles generic buttons not managed by ConversationHandlers)
-application.add_handler(CallbackQueryHandler(button_handler, pattern='^(?!NEWCLASS$|CANCELCLASS$|NEWREQUEST$).*'))
+# application.add_handler(CallbackQueryHandler(button_handler, pattern='^(?!NEWCLASS$|CANCELCLASS$|NEWREQUEST$).*'))
+application.add_handler(CallbackQueryHandler(button_handler, pattern='^(CANCEL|SKIP)$'))
 
 # Error Handler
 async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
