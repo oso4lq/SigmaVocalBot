@@ -128,6 +128,7 @@ async def button_handler(update: Update, context: CallbackContext):
         await query.edit_message_text(text="Unknown action. Please try again.")
         return ConversationHandler.END
 
+# Move to handlers_newclass.py
 # NEWCLASS Handlers
 async def newclass_start(update: Update, context: CallbackContext):
     query = update.callback_query
@@ -150,6 +151,7 @@ async def newclass_start(update: Update, context: CallbackContext):
     await context.bot.send_message(chat_id=query.message.chat_id, text="Available dates:", reply_markup=reply_markup)
     return SELECT_DATE
 
+# Move to handlers_newclass.py
 async def select_date(update: Update, context: CallbackContext):
     query = update.callback_query
     selected_date = query.data.split('_')[1]
@@ -174,6 +176,7 @@ async def select_date(update: Update, context: CallbackContext):
     await context.bot.send_message(chat_id=query.message.chat_id, text="Available time slots:", reply_markup=reply_markup)
     return SELECT_TIME
 
+# Move to handlers_newclass.py
 async def select_time(update: Update, context: CallbackContext):
     query = update.callback_query
     selected_time = query.data.split('_')[1]
@@ -191,6 +194,7 @@ async def select_time(update: Update, context: CallbackContext):
     )
     return ENTER_MESSAGE
 
+# Move to handlers_newclass.py
 # Handler for SKIP button in ENTER_MESSAGE state
 async def skip_message(update: Update, context: CallbackContext):
     query = update.callback_query
@@ -266,6 +270,7 @@ async def skip_message(update: Update, context: CallbackContext):
 
     return ConversationHandler.END
 
+# Move to handlers_newclass.py
 # Handler for text input in ENTER_MESSAGE state
 async def enter_message(update: Update, context: CallbackContext):
     user_message = update.message.text
@@ -341,6 +346,7 @@ async def enter_message(update: Update, context: CallbackContext):
 
     return ConversationHandler.END
 
+# Move to handlers_newclass.py
 # Function to convert local time to UTC ISO8601 string
 def convert_to_utc(date_str: str, time_str: str, add_hours: int = 0) -> str:
     """
@@ -355,6 +361,7 @@ def convert_to_utc(date_str: str, time_str: str, add_hours: int = 0) -> str:
     utc_dt = local_dt.astimezone(ZoneInfo('UTC'))
     return utc_dt.isoformat()
 
+# Move to handlers_newclass.py
 # Define the NEWCLASS Conversation Handler
 def newclass_conv_handler() -> ConversationHandler:
     return ConversationHandler(
@@ -370,6 +377,7 @@ def newclass_conv_handler() -> ConversationHandler:
         fallbacks=[CallbackQueryHandler(button_handler, pattern='^CANCEL$')],
     )
 
+# Move to handlers_newrequest.py
 # NEWREQUEST Handlers
 async def newrequest_start(update: Update, context: CallbackContext):
     query = update.callback_query
@@ -391,6 +399,7 @@ async def enter_name(update: Update, context: CallbackContext):
     )
     return ENTER_REQUEST_MESSAGE
 
+# Move to handlers_newrequest.py
 async def enter_request_message(update: Update, context: CallbackContext):
     user_message = update.message.text
     if user_message.lower() != 'skip':
@@ -419,6 +428,7 @@ async def enter_request_message(update: Update, context: CallbackContext):
         await update.message.reply_text("There was an error saving your request. Please try again.")
     return ConversationHandler.END
 
+# Move to handlers_newrequest.py
 # Define the NEWREQUEST Conversation Handler
 def newrequest_conv_handler() -> ConversationHandler:
     return ConversationHandler(
@@ -433,6 +443,7 @@ def newrequest_conv_handler() -> ConversationHandler:
         fallbacks=[CallbackQueryHandler(button_handler, pattern='^CANCEL$')],
     )
 
+# Move to handlers_cancelclass.py
 # CANCELCLASS Handlers
 async def cancelclass_start(update: Update, context: CallbackContext):
     query = update.callback_query
@@ -469,6 +480,7 @@ async def cancelclass_start(update: Update, context: CallbackContext):
         await query.edit_message_text(text="You don't have any classes signed up for.")
         return ConversationHandler.END
 
+# Move to handlers_cancelclass.py
 async def select_class_to_cancel(update: Update, context: CallbackContext):
     query = update.callback_query
     class_id = query.data.split('_')[1]
@@ -525,6 +537,7 @@ async def select_class_to_cancel(update: Update, context: CallbackContext):
         await query.edit_message_text(text="Class not found.")
         return ConversationHandler.END
 
+# Move to handlers_cancelclass.py
 async def confirm_cancellation(update: Update, context: CallbackContext):
     query = update.callback_query
     class_id = context.user_data.get('class_id_to_cancel')
@@ -592,6 +605,7 @@ async def confirm_cancellation(update: Update, context: CallbackContext):
 
     return ConversationHandler.END
 
+# Move to handlers_cancelclass.py
 # Define the CANCELCLASS Conversation Handler
 def cancelclass_conv_handler() -> ConversationHandler:
     return ConversationHandler(

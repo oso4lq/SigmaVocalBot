@@ -24,6 +24,7 @@ Allows an existing user to sign up for a new class.
 Allows an existing user to cancel an existing class. 
 - Check if the user has classes,
 - Display the user's classes as buttons,
+- Refund policy validation (membership points),
 - Ask if the user is sure about canceling the selected class,
 - Update the Classes object in the Firestore Database to delete the selected class,
 - Notify the user of the request status (success/error),
@@ -42,5 +43,4 @@ Aborts the current command and reloads the bot.
 
 
 Done in Frontend, not done in Bot:
-- Refund policy validation (membership),
 - Edit status function for admin.

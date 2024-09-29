@@ -13,14 +13,12 @@ from telegram.ext import (
     CallbackQueryHandler,
     ContextTypes
 )
-from handlers import (
-    start, 
-    button_handler,
-    newclass_conv_handler, 
-    newrequest_conv_handler,
-    cancelclass_conv_handler
-)
 from firebase_utils import initialize_firebase
+from handlers_start import start
+from handlers_button import button_handler
+from handlers_newclass import newclass_conv_handler
+from handlers_newrequest import newrequest_conv_handler
+from handlers_cancelclass import cancelclass_conv_handler
 
 # Load environment variables from .env file
 load_dotenv()
