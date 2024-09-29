@@ -91,9 +91,19 @@ def update_user_classes(db: firestore.client, user_id: str, class_id: str) -> bo
         return False
 
 # Add a new request
+# def add_new_request(db: firestore.client, request_data: Dict[str, Any]) -> bool:
+#     try:
+#         db.collection('requests').add(request_data)
+#         return True
+#     except Exception as e:
+#         print(f"Error adding new request: {e}")
+#         return False
 def add_new_request(db: firestore.client, request_data: Dict[str, Any]) -> bool:
     try:
-        db.collection('requests').add(request_data)
+        # Create a new document reference with an auto-generated ID
+        doc_ref = db.collection('requests').document()
+        request_data['id'] = doc_ref.id  # Set the 'id' field
+        doc_ref.set(request_data)
         return True
     except Exception as e:
         print(f"Error adding new request: {e}")

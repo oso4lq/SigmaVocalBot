@@ -7,9 +7,7 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import (
     CallbackContext, 
     ConversationHandler, 
-    CallbackQueryHandler, 
-    MessageHandler, 
-    filters
+    CallbackQueryHandler
 )
 from firebase_utils import get_user_by_telegram_username, delete_class
 from firebase_utils import get_user_by_telegram_username, get_classes_by_ids

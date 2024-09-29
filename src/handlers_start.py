@@ -58,14 +58,15 @@ async def start(update: Update, context: CallbackContext):
             # User not found
             await context.bot.send_message(
                 chat_id=chat_id,
-                text="It looks like your username is not in our database yet. Would you like to leave a request for your first class in Sigma?"
+                text="It looks like your username is not in our database yet. Would you like to leave a request for your first class in ΣΙΓΜΑ?"
             )
             keyboard = [
                 [InlineKeyboardButton("Leave a Request", callback_data='NEWREQUEST')],
                 [InlineKeyboardButton("Cancel", callback_data='CANCEL')]
             ]
             reply_markup = InlineKeyboardMarkup(keyboard)
-            await context.bot.send_message(chat_id=chat_id, reply_markup=reply_markup)
+            # await context.bot.send_message(chat_id=chat_id, reply_markup=reply_markup)
+            await context.bot.send_message(chat_id=chat_id, text="Please choose an option:", reply_markup=reply_markup)
     except Exception as e:
         logging.error(f"Error in start handler: {e}")
         await context.bot.send_message(chat_id=chat_id, text="An error occurred while fetching your data. Please try again later.")

@@ -40,10 +40,8 @@ async def enter_name(update: Update, context: CallbackContext):
 
 async def enter_request_message(update: Update, context: CallbackContext):
     user_message = update.message.text
-    if user_message.lower() != 'skip':
-        context.user_data['message'] = user_message
-    else:
-        context.user_data['message'] = ''
+    context.user_data['message'] = user_message  # Save the message
+    
     # Save the request to Firestore
     user = update.message.from_user
     db = context.bot_data['db']
@@ -51,10 +49,11 @@ async def enter_request_message(update: Update, context: CallbackContext):
         request_data = {
             'name': context.user_data['name'],
             'telegram': user.username or '',  # Handle if username is None
-            'email': '',  # If available
-            'phone': '',  # If available
+            'email': '',  # Empty as per your Angular app
+            'phone': '',  # Empty as per your Angular app
             'message': context.user_data['message'],
-            'date': datetime.utcnow().isoformat()
+            'date': datetime.utcnow().isoformat(),
+            'id': ''  # Placeholder; will be set in add_new_request
         }
         success = add_new_request(db, request_data)
         if success:
@@ -66,6 +65,35 @@ async def enter_request_message(update: Update, context: CallbackContext):
         await update.message.reply_text("There was an error saving your request. Please try again.")
     return ConversationHandler.END
 
+async def skip_message(update: Update, context: CallbackContext):
+    query = update.callback_query
+    await query.answer()
+    context.user_data['message'] = ''  # Set message as empty
+    await query.edit_message_text(text="Proceeding without an additional message.")
+    
+    # Save the request to Firestore
+    user = query.from_user
+    db = context.bot_data['db']
+    try:
+        request_data = {
+            'name': context.user_data['name'],
+            'telegram': user.username or '',  # Handle if username is None
+            'email': '',  # Empty as per your Angular app
+            'phone': '',  # Empty as per your Angular app
+            'message': context.user_data['message'],
+            'date': datetime.utcnow().isoformat(),
+            'id': ''  # Placeholder; will be set in add_new_request
+        }
+        success = add_new_request(db, request_data)
+        if success:
+            await query.message.reply_text("Your request was saved. Please wait until the tutor contacts you.")
+        else:
+            await query.message.reply_text("There was an error saving your request. Please try again.")
+    except Exception as e:
+        logging.error(f"Error in skip_message handler: {e}")
+        await query.message.reply_text("There was an error saving your request. Please try again.")
+    return ConversationHandler.END
+
 def newrequest_conv_handler() -> ConversationHandler:
     return ConversationHandler(
         entry_points=[CallbackQueryHandler(newrequest_start, pattern='^NEWREQUEST$')],
@@ -73,84 +101,8 @@ def newrequest_conv_handler() -> ConversationHandler:
             ENTER_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, enter_name)],
             ENTER_REQUEST_MESSAGE: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND, enter_request_message),
-                CallbackQueryHandler(skip_message, pattern='^SKIP$')  # Ensure skip_message is imported if needed
+                CallbackQueryHandler(skip_message, pattern='^SKIP$')  # Include skip_message handler
             ]
         },
         fallbacks=[CallbackQueryHandler(button_handler, pattern='^CANCEL$')],
     )
-
-
-# sample from NEWCLASS
-async def skip_message(update: Update, context: CallbackContext):
-    query = update.callback_query
-    await query.answer()
-    context.user_data['message'] = ''  # Set message as empty
-    await query.edit_message_text(text="Proceeding without an additional message.")
-    
-    # Proceed to save the class
-    user = query.from_user
-    db = context.bot_data['db']
-
-    try:
-        # Get user data from Firestore
-        user_data = get_user_by_telegram_username(db, user.username)
-        if not user_data:
-            await query.message.reply_text("User data not found. Please ensure your Telegram username is linked to your account.")
-            return ConversationHandler.END
-
-        # Check membership points
-        membership_points = user_data.get('membership', 0)
-        if membership_points > 0:
-            is_membership_used = True
-            membership_points -= 1  # Decrement membership points
-        else:
-            is_membership_used = False
-
-        # Prepare class data
-        class_data = {
-            'id': '',  # Will be set in add_new_class
-            'status': 'подтверждено' if is_membership_used else 'в ожидании',
-            'startdate': convert_to_utc(context.user_data['selected_date'], context.user_data['selected_time']),
-            'enddate': convert_to_utc(
-                context.user_data['selected_date'], 
-                context.user_data['selected_time'],
-                add_hours=1
-            ),
-            'message': context.user_data['message'],
-            'isMembershipUsed': is_membership_used,
-            'userId': user_data['id'],  # Use userData.id from Firestore
-        }
-
-        # Start a batch
-        batch = db.batch()
-
-        # Create a new document reference for the class
-        class_ref = db.collection('classes').document()
-        class_data['id'] = class_ref.id
-
-        # Add the class to the batch
-        batch.set(class_ref, class_data)
-
-        # Update user's classes list
-        updated_classes = user_data.get('classes', [])
-        updated_classes.append(class_ref.id)
-        user_update_data = {
-            'classes': updated_classes
-        }
-        if is_membership_used:
-            user_update_data['membership'] = membership_points
-
-        # Update user data in the batch
-        user_ref = db.collection('users').document(user_data['id'])
-        batch.update(user_ref, user_update_data)
-
-        # Commit the batch
-        batch.commit()
-
-        await query.message.reply_text("Your class was saved. Please wait for the confirmation.")
-
-    except Exception as e:
-        logging.error(f"Error in skip_message handler: {e}")
-        await query.message.reply_text("There was an error saving your class. Please try again.")
-
-    return ConversationHandler.END
