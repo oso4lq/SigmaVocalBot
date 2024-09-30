@@ -2,11 +2,18 @@
 
 import logging
 from datetime import datetime
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import (
+    InlineKeyboardButton, 
+    InlineKeyboardMarkup
+)
 from telegram.ext import CallbackContext
 from telegram import Update
-from firebase_utils import get_user_by_telegram_username, get_classes_by_ids
+from firebase_utils import (
+    get_user_by_telegram_username, 
+    get_classes_by_ids
+)
 from utils import ST_PETERSBURG
+
 
 async def start(update: Update, context: CallbackContext):
     db = context.bot_data['db']
@@ -52,7 +59,6 @@ async def start(update: Update, context: CallbackContext):
             keyboard = [
                 [InlineKeyboardButton("Sign Up for New Class", callback_data='NEWCLASS')],
                 [InlineKeyboardButton("Cancel a Class", callback_data='CANCELCLASS')],
-                # [InlineKeyboardButton("Cancel", callback_data='CANCEL')]
             ]
 
             # If user is admin, add the "See my schedule" button

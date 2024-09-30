@@ -3,19 +3,24 @@
 import logging
 from datetime import datetime
 from zoneinfo import ZoneInfo
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram import (
+    InlineKeyboardButton, 
+    InlineKeyboardMarkup, 
+    Update
+)
 from telegram.ext import (
     CallbackContext, 
     ConversationHandler, 
     CallbackQueryHandler
 )
-from firebase_utils import get_user_by_telegram_username, delete_class
 from firebase_utils import get_user_by_telegram_username, get_classes_by_ids
 from handlers_button import button_handler
 from utils import ST_PETERSBURG
 
+
 # Define Conversation States for CANCELCLASS
 SELECT_CLASS_TO_CANCEL, CONFIRM_CANCELLATION = range(2)
+
 
 async def cancelclass_start(update: Update, context: CallbackContext):
     query = update.callback_query
@@ -51,6 +56,7 @@ async def cancelclass_start(update: Update, context: CallbackContext):
     else:
         await query.edit_message_text(text="You don't have any classes signed up for.")
         return ConversationHandler.END
+
 
 async def select_class_to_cancel(update: Update, context: CallbackContext):
     query = update.callback_query
@@ -107,6 +113,7 @@ async def select_class_to_cancel(update: Update, context: CallbackContext):
     else:
         await query.edit_message_text(text="Class not found.")
         return ConversationHandler.END
+
 
 async def confirm_cancellation(update: Update, context: CallbackContext):
     query = update.callback_query
@@ -174,6 +181,7 @@ async def confirm_cancellation(update: Update, context: CallbackContext):
         await query.edit_message_text(text="There was an error cancelling your class. Please try again.")
 
     return ConversationHandler.END
+
 
 def cancelclass_conv_handler() -> ConversationHandler:
     return ConversationHandler(

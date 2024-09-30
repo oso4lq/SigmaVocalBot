@@ -1,11 +1,21 @@
+# Handles the SCHEDULE conversation: schedule for a day, switch between days, edit class status, delete class, refund policy.
+
 import logging
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
-from telegram.ext import CallbackContext, CallbackQueryHandler, ConversationHandler
+from telegram import (
+    InlineKeyboardButton, 
+    InlineKeyboardMarkup, 
+    Update
+)
+from telegram.ext import (
+    CallbackContext, 
+    CallbackQueryHandler, 
+    ConversationHandler
+)
 from firebase_utils import get_classes_by_date, get_user_by_id, update_class_status
-from utils import ST_PETERSBURG
 from handlers_button import button_handler
+from utils import ST_PETERSBURG
 
 # Define Conversation States
 VIEW_SCHEDULE, EDIT_CLASS, EDIT_STATUS = range(3)

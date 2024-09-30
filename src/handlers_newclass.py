@@ -14,18 +14,13 @@ from telegram.ext import (
     MessageHandler, 
     filters
 )
-from firebase_utils import (
-    get_user_by_telegram_username, 
-    get_occupied_time_slots
-    )
-from utils import (
-    convert_to_utc, 
-    ST_PETERSBURG
-)
+from firebase_utils import get_user_by_telegram_username, get_occupied_time_slots
+from utils import convert_to_utc, ST_PETERSBURG
 from handlers_button import button_handler
 
 # Define Conversation States for NEWCLASS
 SELECT_DATE, SELECT_TIME, ENTER_MESSAGE = range(3)
+
 
 async def newclass_start(update: Update, context: CallbackContext):
     query = update.callback_query
@@ -47,6 +42,7 @@ async def newclass_start(update: Update, context: CallbackContext):
     reply_markup = InlineKeyboardMarkup(dates_buttons)
     await context.bot.send_message(chat_id=query.message.chat_id, text="Available dates:", reply_markup=reply_markup)
     return SELECT_DATE
+
 
 async def select_date(update: Update, context: CallbackContext):
     query = update.callback_query
@@ -74,6 +70,7 @@ async def select_date(update: Update, context: CallbackContext):
     await context.bot.send_message(chat_id=query.message.chat_id, text="Available time slots:", reply_markup=reply_markup)
     return SELECT_TIME
 
+
 async def select_time(update: Update, context: CallbackContext):
     query = update.callback_query
     selected_time = query.data.split('_')[1]
@@ -90,6 +87,7 @@ async def select_time(update: Update, context: CallbackContext):
         reply_markup=reply_markup
     )
     return ENTER_MESSAGE
+
 
 async def skip_message(update: Update, context: CallbackContext):
     query = update.callback_query
@@ -165,6 +163,7 @@ async def skip_message(update: Update, context: CallbackContext):
 
     return ConversationHandler.END
 
+
 async def enter_message(update: Update, context: CallbackContext):
     user_message = update.message.text
     if user_message.lower() != 'skip':
@@ -238,6 +237,7 @@ async def enter_message(update: Update, context: CallbackContext):
         await update.message.reply_text("There was an error saving your class. Please try again.")
 
     return ConversationHandler.END
+
 
 def newclass_conv_handler() -> ConversationHandler:
     return ConversationHandler(

@@ -2,8 +2,6 @@
 
 from telegram.ext import CallbackContext
 from telegram import Update
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import CallbackQueryHandler
 from telegram.ext import ConversationHandler
 
 async def button_handler(update: Update, context: CallbackContext):

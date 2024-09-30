@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
 # Define the time zone for Saint Petersburg
-ST_PETERSBURG = ZoneInfo('Europe/Moscow')  # Saint Petersburg uses Moscow's time zone
+ST_PETERSBURG = ZoneInfo('Europe/Moscow')
 
 def convert_to_utc(date_str: str, time_str: str, add_hours: int = 0) -> str:
     """

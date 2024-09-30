@@ -2,7 +2,11 @@
 
 import logging
 from datetime import datetime
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram import (
+    InlineKeyboardButton, 
+    InlineKeyboardMarkup, 
+    Update
+)
 from telegram.ext import (
     CallbackContext, 
     ConversationHandler, 
@@ -12,16 +16,17 @@ from telegram.ext import (
 )
 from firebase_utils import add_new_request
 from handlers_button import button_handler
-from firebase_utils import get_user_by_telegram_username
 from utils import convert_to_utc
 
 # Define Conversation States for NEWREQUEST
 ENTER_NAME, ENTER_REQUEST_MESSAGE = range(2)
 
+
 async def newrequest_start(update: Update, context: CallbackContext):
     query = update.callback_query
     await query.edit_message_text(text="Please enter your name:")
     return ENTER_NAME
+
 
 async def enter_name(update: Update, context: CallbackContext):
     name = update.message.text.strip()
@@ -37,6 +42,7 @@ async def enter_name(update: Update, context: CallbackContext):
         ])
     )
     return ENTER_REQUEST_MESSAGE
+
 
 async def enter_request_message(update: Update, context: CallbackContext):
     user_message = update.message.text
@@ -64,6 +70,7 @@ async def enter_request_message(update: Update, context: CallbackContext):
         logging.error(f"Error in enter_request_message handler: {e}")
         await update.message.reply_text("There was an error saving your request. Please try again.")
     return ConversationHandler.END
+
 
 async def skip_message(update: Update, context: CallbackContext):
     query = update.callback_query
@@ -93,6 +100,7 @@ async def skip_message(update: Update, context: CallbackContext):
         logging.error(f"Error in skip_message handler: {e}")
         await query.message.reply_text("There was an error saving your request. Please try again.")
     return ConversationHandler.END
+
 
 def newrequest_conv_handler() -> ConversationHandler:
     return ConversationHandler(
