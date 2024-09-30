@@ -17,9 +17,9 @@ from telegram.ext import (
     CommandHandler,
     filters,
 )
-from .firebase_utils import add_new_request
-from .handlers_button import button_handler, cancel_command
-from .utils import reset_user_commands
+from firebase_utils import add_new_request
+from handlers_button import button_handler, cancel_command
+from utils import reset_user_commands
 
 # Define Conversation States for NEWREQUEST
 ENTER_NAME, ENTER_REQUEST_MESSAGE = range(2)
