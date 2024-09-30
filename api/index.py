@@ -67,6 +67,16 @@ application.add_error_handler(error_handler)
 # Create FastAPI app
 app = FastAPI()
 
+# Initialize the Application on Startup
+@app.on_event("startup")
+async def startup_event():
+    await application.initialize()
+
+# Shutdown the Application on Shutdown
+@app.on_event("shutdown")
+async def shutdown_event():
+    await application.shutdown()
+
 @app.post("/webhook")
 async def webhook(request: Request):
     data = await request.json()
