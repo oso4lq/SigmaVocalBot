@@ -16,10 +16,10 @@ from telegram.ext import (
     CallbackContext,
     CommandHandler,
 )
-from firebase_utils import get_user_by_telegram_username, get_classes_by_ids
-from handlers_button import button_handler, cancel_command
-from utils import reset_user_commands, ST_PETERSBURG
-from handlers_start import start
+from .firebase_utils import get_user_by_telegram_username, get_classes_by_ids
+from .handlers_button import button_handler, cancel_command
+from .utils import reset_user_commands, ST_PETERSBURG
+from .handlers_start import start
 
 
 # Define Conversation States for CANCELCLASS

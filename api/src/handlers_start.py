@@ -10,11 +10,11 @@ from telegram import (
     Update,
 )
 from telegram.ext import CallbackContext
-from firebase_utils import (
+from .firebase_utils import (
     get_user_by_telegram_username, 
     get_classes_by_ids
 )
-from utils import ST_PETERSBURG
+from .utils import ST_PETERSBURG
 
 
 async def start(update: Update, context: CallbackContext):

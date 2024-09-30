@@ -17,10 +17,10 @@ from telegram.ext import (
     CommandHandler,
     filters,
 )
-from firebase_utils import get_user_by_telegram_username, get_occupied_time_slots
-from utils import convert_to_utc, reset_user_commands, ST_PETERSBURG
-from handlers_button import button_handler, cancel_command
-from handlers_start import start
+from .firebase_utils import get_user_by_telegram_username, get_occupied_time_slots
+from .utils import convert_to_utc, reset_user_commands, ST_PETERSBURG
+from .handlers_button import button_handler, cancel_command
+from .handlers_start import start
 
 # Define Conversation States for NEWCLASS
 SELECT_DATE, SELECT_TIME, ENTER_MESSAGE = range(3)
