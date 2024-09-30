@@ -10,9 +10,7 @@ from telegram import (
 from telegram.ext import (
     CallbackContext
 )
-from firebase_utils import (
-    get_user_by_telegram_username, 
-)
+from .firebase_utils import get_user_by_telegram_username
 
 # Define the time zone for Saint Petersburg
 ST_PETERSBURG = ZoneInfo('Europe/Moscow')
