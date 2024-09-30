@@ -4,34 +4,51 @@ import logging
 from datetime import datetime
 from zoneinfo import ZoneInfo
 from telegram import (
-    InlineKeyboardButton, 
-    InlineKeyboardMarkup, 
-    Update
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    BotCommandScopeChat,
+    BotCommand,
+    Update,
 )
 from telegram.ext import (
-    CallbackContext, 
-    ConversationHandler, 
-    CallbackQueryHandler
+    CallbackQueryHandler,
+    ConversationHandler,
+    CallbackContext,
+    CommandHandler,
 )
 from firebase_utils import get_user_by_telegram_username, get_classes_by_ids
-from handlers_button import button_handler
-from utils import ST_PETERSBURG
+from handlers_button import button_handler, cancel_command
+from utils import reset_user_commands, ST_PETERSBURG
+from handlers_start import start
 
 
 # Define Conversation States for CANCELCLASS
 SELECT_CLASS_TO_CANCEL, CONFIRM_CANCELLATION = range(2)
 
 
+ # Entry point. Displays a list of the user's classes to select for cancellation.
 async def cancelclass_start(update: Update, context: CallbackContext):
-    query = update.callback_query
-    await query.answer()
-    user = query.from_user
-    db = context.bot_data['db']
+    if update.callback_query:
+        query = update.callback_query
+        await query.answer()
+        user = query.from_user
+        chat_id = query.message.chat_id
+    else:
+        user = update.message.from_user
+        chat_id = update.message.chat_id
+        await update.message.reply_text("Choose a class you would like to cancel:")
+
+    # Set commands relevant to CANCELCLASS
+    await context.bot.set_my_commands(
+        [BotCommand('cancel', 'Cancel the operation')],
+        scope=BotCommandScopeChat(chat_id)
+    )
 
     # Get user data
+    db = context.bot_data['db']
     user_data = get_user_by_telegram_username(db, user.username)
     if not user_data:
-        await query.edit_message_text(text="User data not found.")
+        await context.bot.send_message(chat_id=chat_id, text="User data not found.")
         return ConversationHandler.END
 
     classes_ids = user_data.get('classes', [])
@@ -58,12 +75,15 @@ async def cancelclass_start(update: Update, context: CallbackContext):
         return ConversationHandler.END
 
 
+# Handles the selection of a class to cancel. Asks the user to confirm the cancellation.
 async def select_class_to_cancel(update: Update, context: CallbackContext):
     query = update.callback_query
+    await query.answer()
     class_id = query.data.split('_')[1]
     context.user_data['class_id_to_cancel'] = class_id
     db = context.bot_data['db']
     class_doc = db.collection('classes').document(class_id).get()
+    
     if class_doc.exists:
         class_data = class_doc.to_dict()
         context.user_data['selected_class_data'] = class_data  # Store for later use
@@ -78,7 +98,7 @@ async def select_class_to_cancel(update: Update, context: CallbackContext):
         utc_now = datetime.utcnow().replace(tzinfo=ZoneInfo('UTC'))
         hours_difference = (utc_start - utc_now).total_seconds() / 3600
 
-        # Determine the message to display
+        # Determine the message to display based on refund policy
         message = ''
         if (
             hours_difference <= 24 and
@@ -95,18 +115,20 @@ async def select_class_to_cancel(update: Update, context: CallbackContext):
         ):
             message = "You can cancel a lesson without losing your membership points."
         else:
-            message = ''
+            message = ""
 
-        # Append the message
+        # Append the message if applicable
         full_text = f"Are you sure you want to cancel this class?\n{class_info}"
         if message:
             full_text += f"\n\n{message}"
 
+        # Display confirmation options
         await query.edit_message_text(
             text=full_text,
             reply_markup=InlineKeyboardMarkup([
                 [InlineKeyboardButton("Yes, Cancel", callback_data='CONFIRM_CANCEL')],
-                [InlineKeyboardButton("No, Go Back", callback_data='CANCEL')]
+                [InlineKeyboardButton("No, Go Back", callback_data='BACK_TO_CLASS_LIST')],
+                [InlineKeyboardButton("Cancel", callback_data='CANCEL')]
             ])
         )
         return CONFIRM_CANCELLATION
@@ -115,8 +137,10 @@ async def select_class_to_cancel(update: Update, context: CallbackContext):
         return ConversationHandler.END
 
 
+#  Handles the confirmation of class cancellation. Updates the database accordingly.
 async def confirm_cancellation(update: Update, context: CallbackContext):
     query = update.callback_query
+    await query.answer()
     class_id = context.user_data.get('class_id_to_cancel')
     user = query.from_user
     if not class_id:
@@ -180,15 +204,70 @@ async def confirm_cancellation(update: Update, context: CallbackContext):
         logging.error(f"Error in confirm_cancellation handler: {e}")
         await query.edit_message_text(text="There was an error cancelling your class. Please try again.")
 
+    # Reset commands based on user status
+    await reset_user_commands(update, context)
+
+    # Call the start function to display updated class list
+    await start(update, context)
+
     return ConversationHandler.END
 
 
+# Handles the 'No, Go Back' action. Returns the user to the list of classes to select.
+async def back_to_class_list(update: Update, context: CallbackContext):
+    query = update.callback_query
+    await query.answer()
+
+    # Fetch user's classes
+    user = query.from_user
+    db = context.bot_data['db']
+    user_data = get_user_by_telegram_username(db, user.username)
+    if not user_data:
+        await query.edit_message_text(text="User data not found. Please ensure your Telegram username is linked to your account.")
+        return ConversationHandler.END
+
+    classes_ids = user_data.get('classes', [])
+    if classes_ids:
+        # Fetch user's classes
+        classes = get_classes_by_ids(db, classes_ids)
+        buttons = []
+        for class_data in classes:
+            # Convert UTC startdate to Saint Petersburg time zone
+            utc_start = datetime.fromisoformat(class_data['startdate'].replace('Z', '+00:00'))
+            spb_start = utc_start.astimezone(ST_PETERSBURG)
+            formatted_start = spb_start.strftime('%d.%m.%Y %H:%M')
+            button_text = f"{formatted_start} | Status: {class_data['status']}"
+            buttons.append([InlineKeyboardButton(button_text, callback_data=f"CANCEL_{class_data['id']}")])
+
+        buttons.append([InlineKeyboardButton("Cancel", callback_data='CANCEL')])
+        reply_markup = InlineKeyboardMarkup(buttons)
+        await query.edit_message_text(text="Select a class to cancel:", reply_markup=reply_markup)
+        return SELECT_CLASS_TO_CANCEL
+    else:
+        await query.edit_message_text(text="You don't have any classes scheduled.")
+        return ConversationHandler.END
+
+
+# Defines the ConversationHandler for the CANCELCLASS flow. States: SELECT_CLASS_TO_CANCEL and CONFIRM_CANCELLATION.
 def cancelclass_conv_handler() -> ConversationHandler:
     return ConversationHandler(
-        entry_points=[CallbackQueryHandler(cancelclass_start, pattern='^CANCELCLASS$')],
+        entry_points=[
+            CallbackQueryHandler(cancelclass_start, pattern='^CANCELCLASS$'),
+            CommandHandler('cancelclass', cancelclass_start)
+        ],
         states={
-            SELECT_CLASS_TO_CANCEL: [CallbackQueryHandler(select_class_to_cancel, pattern='^CANCEL_')],
-            CONFIRM_CANCELLATION: [CallbackQueryHandler(confirm_cancellation, pattern='^CONFIRM_CANCEL$')]
+            SELECT_CLASS_TO_CANCEL: [
+                CallbackQueryHandler(select_class_to_cancel, pattern='^CANCEL_'),
+                CallbackQueryHandler(button_handler, pattern='^CANCEL$')
+            ],
+            CONFIRM_CANCELLATION: [
+                CallbackQueryHandler(confirm_cancellation, pattern='^CONFIRM_CANCEL$'),
+                CallbackQueryHandler(back_to_class_list, pattern='^BACK_TO_CLASS_LIST$'),  # Added handler
+                CallbackQueryHandler(button_handler, pattern='^CANCEL$')
+            ],
         },
-        fallbacks=[CallbackQueryHandler(button_handler, pattern='^CANCEL$')],
+        fallbacks=[
+            CallbackQueryHandler(button_handler, pattern='^CANCEL$'),
+            CommandHandler('cancel', cancel_command),
+        ],
     )

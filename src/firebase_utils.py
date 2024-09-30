@@ -10,9 +10,12 @@
 import firebase_admin
 from firebase_admin import credentials, firestore
 from datetime import datetime
+from zoneinfo import ZoneInfo
 from typing import Optional, List, Dict, Any
-from utils import ST_PETERSBURG
+# from utils import ST_PETERSBURG
 
+# Define the time zone for Saint Petersburg
+ST_PETERSBURG = ZoneInfo('Europe/Moscow')
 
 # Initialize Firebase Admin SDK (Ensure this is called once)
 def initialize_firebase(service_account_key_path: str) -> firestore.client:

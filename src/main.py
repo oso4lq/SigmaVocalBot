@@ -8,13 +8,13 @@ import logging
 from dotenv import load_dotenv
 from telegram import Update
 from telegram.ext import (
-    ApplicationBuilder, 
-    CommandHandler, 
     CallbackQueryHandler,
-    ContextTypes
+    ApplicationBuilder,
+    CommandHandler,
+    ContextTypes,
 )
 from firebase_utils import initialize_firebase
-from handlers_button import button_handler
+from handlers_button import button_handler, cancel_command
 from handlers_start import start
 from handlers_newclass import newclass_conv_handler
 from handlers_newrequest import newrequest_conv_handler
@@ -54,10 +54,14 @@ application = ApplicationBuilder().token(TELEGRAM_BOT_TOKEN).build()
 # Store db in bot_data for access in handlers
 application.bot_data['db'] = db
 
+
 # Register Handlers
 
 # START Command Handler
 application.add_handler(CommandHandler('start', start))
+
+# CANCEL Command handler
+application.add_handler(CommandHandler('cancel', cancel_command))
 
 # NEWCLASS Conversation Handler
 application.add_handler(newclass_conv_handler())
@@ -72,7 +76,6 @@ application.add_handler(cancelclass_conv_handler())
 application.add_handler(schedule_conv_handler())
 
 # Button Callback Handler (Handles generic buttons not managed by ConversationHandlers)
-# application.add_handler(CallbackQueryHandler(button_handler, pattern='^(?!NEWCLASS$|CANCELCLASS$|NEWREQUEST$).*'))
 application.add_handler(CallbackQueryHandler(button_handler, pattern='^(CANCEL|SKIP)$'))
 
 # Error Handler

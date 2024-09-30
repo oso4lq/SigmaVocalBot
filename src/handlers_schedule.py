@@ -4,17 +4,18 @@ import logging
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 from telegram import (
-    InlineKeyboardButton, 
-    InlineKeyboardMarkup, 
-    Update
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    Update,
 )
 from telegram.ext import (
-    CallbackContext, 
-    CallbackQueryHandler, 
-    ConversationHandler
+    CallbackQueryHandler,
+    ConversationHandler,
+    CallbackContext,
+    CommandHandler,
 )
 from firebase_utils import get_classes_by_date, get_user_by_id, update_class_status
-from handlers_button import button_handler
+from handlers_button import button_handler, cancel_command
 from utils import ST_PETERSBURG
 
 # Define Conversation States
@@ -23,16 +24,21 @@ VIEW_SCHEDULE, EDIT_CLASS, EDIT_STATUS = range(3)
 
 # Initiate the SCHEDULE command, setting the default date and displaying the schedule for that date.
 async def schedule_start(update: Update, context: CallbackContext):
-    query = update.callback_query
-    await query.answer()
-    db = context.bot_data['db']
+    if update.callback_query:
+        query = update.callback_query
+        await query.answer()
+        chat_id = query.message.chat_id
+    else:
+        await update.message.reply_text("Fetching your schedule...")
+        chat_id = update.message.chat_id
 
+    db = context.bot_data['db']
     # Set default date to today in Saint Petersburg timezone
     today = datetime.now(ST_PETERSBURG).date()
     context.user_data['filter_by_this_date'] = today.isoformat()
 
     # Fetch and display the schedule
-    await display_schedule(query.message.chat_id, context)
+    await display_schedule(chat_id, context)
     return VIEW_SCHEDULE
 
 
@@ -204,8 +210,10 @@ async def update_status(update: Update, context: CallbackContext):
         logging.error(f"Error updating class status: {e}")
         await query.edit_message_text(text="There was an error updating the class status. Please try again.")
 
-    # Optionally, return to the schedule or end the conversation
-    return ConversationHandler.END
+    # Optionally, End the conversation or Refresh the schedule
+    # return ConversationHandler.END # End the conversation
+    await display_schedule(query.message.chat_id, context)
+    return VIEW_SCHEDULE  # Return to the schedule viewing state
 
 
 # Prompt admin if they are sure to delete a class
@@ -285,18 +293,24 @@ async def delete_class(update: Update, context: CallbackContext):
         logging.error(f"Error deleting class: {e}")
         await query.edit_message_text(text="There was an error deleting the class. Please try again.")
 
-    return ConversationHandler.END
+    # Optionally, End the conversation or Refresh the schedule
+    # return ConversationHandler.END # End the conversation
+    await display_schedule(query.message.chat_id, context)
+    return VIEW_SCHEDULE  # Return to the schedule viewing state
 
 
 # Handler to Go Back to Schedule
 async def back_to_schedule(update: Update, context: CallbackContext):
     query = update.callback_query
     await query.answer()
+
     # Clear selected class data
     context.user_data.pop('selected_class_id', None)
     context.user_data.pop('selected_class_data', None)
+
     # Edit message to remove previous content
     await query.edit_message_text(text="Returning to schedule...")
+
     # Display schedule
     await display_schedule(query.message.chat_id, context)
     return VIEW_SCHEDULE
@@ -305,7 +319,10 @@ async def back_to_schedule(update: Update, context: CallbackContext):
 # Define the Conversation Handler
 def schedule_conv_handler() -> ConversationHandler:
     return ConversationHandler(
-        entry_points=[CallbackQueryHandler(schedule_start, pattern='^SCHEDULE$')],
+        entry_points=[
+            CallbackQueryHandler(schedule_start, pattern='^SCHEDULE$'),
+            CommandHandler('schedule', schedule_start),
+        ],
         states={
             VIEW_SCHEDULE: [
                 CallbackQueryHandler(navigate_date, pattern='^(PREV_DAY|NEXT_DAY)$'),
@@ -325,5 +342,8 @@ def schedule_conv_handler() -> ConversationHandler:
                 CallbackQueryHandler(button_handler, pattern='^CANCEL$'),
             ]
         },
-        fallbacks=[CallbackQueryHandler(button_handler, pattern='^CANCEL$')],
+        fallbacks=[
+            CallbackQueryHandler(button_handler, pattern='^CANCEL$'),
+            CommandHandler('cancel', cancel_command),
+        ],
     )
