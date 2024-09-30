@@ -38,21 +38,6 @@ logger = logging.getLogger(__name__)
 # Initialize Firebase
 db = initialize_firebase()
 
-# Initialize the Telegram Bot Application
-application = ApplicationBuilder().token(TELEGRAM_BOT_TOKEN).build()
-
-# Store db in bot_data for access in handlers
-application.bot_data['db'] = db
-
-# Register Handlers
-application.add_handler(CommandHandler('start', start))
-application.add_handler(CommandHandler('cancel', cancel_command))
-application.add_handler(newclass_conv_handler())
-application.add_handler(newrequest_conv_handler())
-application.add_handler(cancelclass_conv_handler())
-application.add_handler(schedule_conv_handler())
-application.add_handler(CallbackQueryHandler(button_handler, pattern='^(CANCEL|SKIP)$'))
-
 # Error Handler
 async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
     logger.error(msg="Exception while handling an update:", exc_info=context.error)
@@ -62,24 +47,41 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
             text="An unexpected error occurred. Please try again later."
         )
 
-application.add_error_handler(error_handler)
+def create_application():
+    application = ApplicationBuilder().token(TELEGRAM_BOT_TOKEN).build()
+    # Store db in bot_data for access in handlers
+    application.bot_data['db'] = db
 
-# Define the lifespan function
-async def lifespan(app: FastAPI):
-    # Startup code
-    await application.initialize()
-    yield
-    # Shutdown code
-    await application.shutdown()
+    # Register Handlers
+    application.add_handler(CommandHandler('start', start))
+    application.add_handler(CommandHandler('cancel', cancel_command))
+    application.add_handler(newclass_conv_handler())
+    application.add_handler(newrequest_conv_handler())
+    application.add_handler(cancelclass_conv_handler())
+    application.add_handler(schedule_conv_handler())
+    application.add_handler(CallbackQueryHandler(button_handler, pattern='^(CANCEL|SKIP)$'))
 
-# Create the FastAPI app with the lifespan function
-app = FastAPI(lifespan=lifespan)
+    application.add_error_handler(error_handler)
+    return application
+
+# Create FastAPI app
+app = FastAPI()
 
 @app.post("/webhook")
 async def webhook(request: Request):
     data = await request.json()
+
+    # Initialize the Application per request
+    application = create_application()
+    await application.initialize()
+
+    # Process the update
     update = telegram.Update.de_json(data, application.bot)
     await application.process_update(update)
+
+    # Shutdown the Application
+    await application.shutdown()
+
     return {"status": "OK"}
 
 # Health check endpoint (optional)
