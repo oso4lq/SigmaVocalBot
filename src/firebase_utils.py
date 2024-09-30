@@ -7,6 +7,8 @@
 # Class Operations: Functions to fetch classes, add new classes, and update class statuses.
 # Request Operations: Function to add new user requests.
 
+import os
+import json
 import firebase_admin
 from firebase_admin import credentials, firestore
 from datetime import datetime
@@ -18,12 +20,20 @@ from typing import Optional, List, Dict, Any
 ST_PETERSBURG = ZoneInfo('Europe/Moscow')
 
 # Initialize Firebase Admin SDK (Ensure this is called once)
-def initialize_firebase(service_account_key_path: str) -> firestore.client:
+# def initialize_firebase(service_account_key_path: str) -> firestore.client:
+#     if not firebase_admin._apps:
+#         cred = credentials.Certificate(service_account_key_path)
+#         firebase_admin.initialize_app(cred)
+#     return firestore.client()
+def initialize_firebase():
     if not firebase_admin._apps:
-        cred = credentials.Certificate(service_account_key_path)
+        service_account_key_json = os.getenv('FIREBASE_SERVICE_ACCOUNT_KEY')
+        if not service_account_key_json:
+            raise ValueError("FIREBASE_SERVICE_ACCOUNT_KEY is not set in the environment variables.")
+        service_account_info = json.loads(service_account_key_json)
+        cred = credentials.Certificate(service_account_info)
         firebase_admin.initialize_app(cred)
     return firestore.client()
-
 
 # Fetch user data by Telegram username
 def get_user_by_telegram_username(db: firestore.client, telegram_username: str) -> Optional[Dict[str, Any]]:
