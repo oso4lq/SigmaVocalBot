@@ -37,12 +37,12 @@ async def reset_user_commands(update: Update, context: CallbackContext):
     if user_data:
         is_admin = user_data.get('isadmin', False)
         commands = [
-            BotCommand('newclass', 'Sign up for a new class'),
-            BotCommand('cancelclass', 'Cancel a class'),
-            BotCommand('cancel', 'Cancel the operation')
+            BotCommand('newclass', 'Записаться на новое занятие'),
+            BotCommand('cancelclass', 'Отменить занятие'),
+            BotCommand('cancel', 'Отменить команду')
         ]
         if is_admin:
-            commands.append(BotCommand('schedule', 'See my schedule'))
+            commands.append(BotCommand('schedule', 'Расписание преподавателя'))
         await context.bot.set_my_commands(
             commands,
             scope=BotCommandScopeChat(update.effective_chat.id)
@@ -50,8 +50,8 @@ async def reset_user_commands(update: Update, context: CallbackContext):
     else:
         await context.bot.set_my_commands(
             [
-                BotCommand('newrequest', 'Leave a request for first class'),
-                BotCommand('cancel', 'Cancel the operation')
+                BotCommand('newrequest', 'Оставить заявку на первое занятие'),
+                BotCommand('cancel', 'Отменить команду')
             ],
             scope=BotCommandScopeChat(update.effective_chat.id)
         )

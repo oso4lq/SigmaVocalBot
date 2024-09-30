@@ -29,7 +29,7 @@ async def schedule_start(update: Update, context: CallbackContext):
         await query.answer()
         chat_id = query.message.chat_id
     else:
-        await update.message.reply_text("Fetching your schedule...")
+        await update.message.reply_text("Загружаю расписание...")
         chat_id = update.message.chat_id
 
     db = context.bot_data['db']
@@ -67,7 +67,7 @@ async def display_schedule(chat_id, context: CallbackContext):
             button_text = f"{formatted_start} | {class_data['status']} | {student_name}"
             buttons.append([InlineKeyboardButton(button_text, callback_data=f"CLASS_{class_data['id']}")])
     else:
-        await context.bot.send_message(chat_id=chat_id, text="You don't have classes on this day.")
+        await context.bot.send_message(chat_id=chat_id, text="В этот день у вас нет занятий.")
 
     # Add navigation buttons
     navigation_buttons = [
@@ -85,7 +85,7 @@ async def display_schedule(chat_id, context: CallbackContext):
     reply_markup = InlineKeyboardMarkup(buttons)
     await context.bot.send_message(
         chat_id=chat_id,
-        text=f"Your classes for {day_name}, {formatted_date}. To edit class status or delete it, press the button with this class.",
+        text=f"Ваши занятия на {day_name}, {formatted_date}. Чтобы изменить статус или удалить, нажмите кнопку с этим занятием.",
         reply_markup=reply_markup
     )
 
@@ -121,7 +121,7 @@ async def select_class(update: Update, context: CallbackContext):
     # Fetch class data
     class_doc = db.collection('classes').document(class_id).get()
     if not class_doc.exists:
-        await query.edit_message_text(text="Class not found.")
+        await query.edit_message_text(text="Занятие не найдено.")
         return VIEW_SCHEDULE
 
     class_data = class_doc.to_dict()
@@ -137,20 +137,20 @@ async def select_class(update: Update, context: CallbackContext):
     student_name = user_data.get('name', 'Unknown')
 
     # Prepare class details
-    is_membership_used = 'Yes' if class_data.get('isMembershipUsed', False) else 'No'
+    is_membership_used = 'да' if class_data.get('isMembershipUsed', False) else 'нет'
     message_text = (
-        f"{formatted_start} | Status: {class_data['status']}\n"
-        f"Student: {student_name}\n"
-        f"Is membership used: {is_membership_used}\n"
-        f"Message: {class_data.get('message', '')}"
+        f"{formatted_start} | статус: {class_data['status']}\n"
+        f"Ученик: {student_name}\n"
+        f"Использован абонемент: {is_membership_used}\n"
+        f"Сообщение: {class_data.get('message', '')}"
     )
 
     # Display options
     keyboard = [
-        [InlineKeyboardButton("Edit Status", callback_data='EDIT_STATUS')],
-        [InlineKeyboardButton("Delete Class", callback_data='DELETE_CLASS')],
-        [InlineKeyboardButton("Back to the Schedule", callback_data='BACK_TO_SCHEDULE')],
-        [InlineKeyboardButton("Cancel", callback_data='CANCEL')]
+        [InlineKeyboardButton("Изменить статус", callback_data='EDIT_STATUS')],
+        [InlineKeyboardButton("Удалить занятие", callback_data='DELETE_CLASS')],
+        [InlineKeyboardButton("Назад к расписанию", callback_data='BACK_TO_SCHEDULE')],
+        [InlineKeyboardButton("Отмена", callback_data='CANCEL')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
@@ -176,18 +176,18 @@ async def edit_status_start(update: Update, context: CallbackContext):
     student_name = user_data.get('name', 'Unknown')
 
     message_text = (
-        "You are going to edit the status of this class:\n"
-        f"{formatted_start} | Status: {class_data['status']}\n"
-        f"Student: {student_name}"
+        "Вы собираетесь изменить статус этого занятия:\n"
+        f"{formatted_start} | статус: {class_data['status']}\n"
+        f"Ученик: {student_name}"
     )
 
     # Display status options
     keyboard = [
-        [InlineKeyboardButton("в ожидании", callback_data='STATUS_в ожидании')],
-        [InlineKeyboardButton("подтверждено", callback_data='STATUS_подтверждено')],
-        [InlineKeyboardButton("отменено", callback_data='STATUS_отменено')],
-        [InlineKeyboardButton("выполнено", callback_data='STATUS_выполнено')],
-        [InlineKeyboardButton("Back to the Schedule", callback_data='BACK_TO_SCHEDULE')]
+        [InlineKeyboardButton("В ожидании", callback_data='STATUS_в ожидании')],
+        [InlineKeyboardButton("Подтверждено", callback_data='STATUS_подтверждено')],
+        [InlineKeyboardButton("Отменено", callback_data='STATUS_отменено')],
+        [InlineKeyboardButton("Выполнено", callback_data='STATUS_выполнено')],
+        [InlineKeyboardButton("Назад к расписанию", callback_data='BACK_TO_SCHEDULE')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
@@ -205,10 +205,10 @@ async def update_status(update: Update, context: CallbackContext):
 
     try:
         update_class_status(db, class_id, new_status)
-        await query.edit_message_text(text=f"Class status updated to '{new_status}'.")
+        await query.edit_message_text(text=f"Статус занятия изменён на: '{new_status}'.")
     except Exception as e:
         logging.error(f"Error updating class status: {e}")
-        await query.edit_message_text(text="There was an error updating the class status. Please try again.")
+        await query.edit_message_text(text="Произошла ошибка обновления статуса занятия. Попробуйте ещё раз.")
 
     # Optionally, End the conversation or Refresh the schedule
     # return ConversationHandler.END # End the conversation
@@ -223,10 +223,10 @@ async def delete_class_confirm(update: Update, context: CallbackContext):
     class_id = context.user_data['selected_class_id']
 
     await query.edit_message_text(
-        text="Are you sure you want to delete this class?",
+        text="Вы уверены, что хотите удалить это занятие?",
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("Yes, Delete", callback_data='CONFIRM_DELETE')],
-            [InlineKeyboardButton("No, Go Back", callback_data='BACK_TO_SCHEDULE')]
+            [InlineKeyboardButton("Да, удалить", callback_data='CONFIRM_DELETE')],
+            [InlineKeyboardButton("Нет, вернуться", callback_data='BACK_TO_SCHEDULE')]
         ])
     )
     return EDIT_CLASS
@@ -244,14 +244,14 @@ async def delete_class(update: Update, context: CallbackContext):
         class_doc_ref = db.collection('classes').document(class_id)
         class_doc = class_doc_ref.get()
         if not class_doc.exists:
-            await query.edit_message_text(text="Class not found.")
+            await query.edit_message_text(text="Занятие не найдено.")
             return ConversationHandler.END
         class_data = class_doc.to_dict()
 
         # Fetch user data
         user_data = get_user_by_id(db, class_data['userId'])
         if not user_data:
-            await query.edit_message_text(text="User data not found.")
+            await query.edit_message_text(text="Данные пользователя не найдены.")
             return ConversationHandler.END
 
         # Calculate hours difference
@@ -288,10 +288,10 @@ async def delete_class(update: Update, context: CallbackContext):
         # Commit the batch
         batch.commit()
 
-        await query.edit_message_text(text="Class has been deleted and membership points adjusted accordingly.")
+        await query.edit_message_text(text="Занятие удалено, баллы абонемента скорректированы.")
     except Exception as e:
         logging.error(f"Error deleting class: {e}")
-        await query.edit_message_text(text="There was an error deleting the class. Please try again.")
+        await query.edit_message_text(text="Произошла ошибка при удалении занятия. Попробуйте ещё раз.")
 
     # Optionally, End the conversation or Refresh the schedule
     # return ConversationHandler.END # End the conversation
@@ -309,7 +309,7 @@ async def back_to_schedule(update: Update, context: CallbackContext):
     context.user_data.pop('selected_class_data', None)
 
     # Edit message to remove previous content
-    await query.edit_message_text(text="Returning to schedule...")
+    await query.edit_message_text(text="Возвращаюсь к расписанию...")
 
     # Display schedule
     await display_schedule(query.message.chat_id, context)

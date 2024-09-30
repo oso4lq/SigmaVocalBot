@@ -34,10 +34,10 @@ async def start(update: Update, context: CallbackContext):
         logging.error("Update does not contain a message or callback_query")
         return
 
-    username = user.full_name or user.username or 'there'
+    username = user.full_name or user.username or 'пользователь'
 
     # Send greeting message
-    await context.bot.send_message(chat_id=chat_id, text=f"Hello, {username}!")
+    await context.bot.send_message(chat_id=chat_id, text=f"Добрый день, {username}!")
 
     # Fetch UserData from Firestore
     try:
@@ -54,12 +54,12 @@ async def start(update: Update, context: CallbackContext):
 
             # Set commands based on user status
             commands = [
-                BotCommand('newclass', 'Sign up for a new class'),
-                BotCommand('cancelclass', 'Cancel a class'),
-                BotCommand('cancel', 'Cancel the operation')
+                BotCommand('newclass', 'Записаться на новое занятие'),
+                BotCommand('cancelclass', 'Отменить занятие'),
+                BotCommand('cancel', 'Отменить команду')
             ]
             if is_admin:
-                commands.append(BotCommand('schedule', 'See my schedule'))
+                commands.append(BotCommand('schedule', 'Расписание преподавателя'))
 
             await context.bot.set_my_commands(
                 commands,
@@ -75,41 +75,41 @@ async def start(update: Update, context: CallbackContext):
                     utc_start = datetime.fromisoformat(class_data['startdate'].replace('Z', '+00:00'))
                     spb_start = utc_start.astimezone(ST_PETERSBURG)
                     formatted_start = spb_start.strftime('%d.%m.%Y %H:%M')
-                    classes_text += f"- {formatted_start} | Status: {class_data['status']}\n"
-                await context.bot.send_message(chat_id=chat_id, text=f"Your classes:\n{classes_text}")
+                    classes_text += f"- {formatted_start} | статус: {class_data['status']}\n"
+                await context.bot.send_message(chat_id=chat_id, text=f"Ваши занятия:\n{classes_text}")
             else:
-                await context.bot.send_message(chat_id=chat_id, text="You don't have any classes scheduled.")
+                await context.bot.send_message(chat_id=chat_id, text="У вас нет запланированных занятий.")
 
             # Display membership points
             membership_points = user_data.get('membership', 0)
             if membership_points:
-                await context.bot.send_message(chat_id=chat_id, text=f"Membership: you have {membership_points} points left.")
+                await context.bot.send_message(chat_id=chat_id, text=f"Занятий в абонементе: {membership_points}")
             else:
-                await context.bot.send_message(chat_id=chat_id, text="Membership: 0. To buy membership points, please contact the tutor.")
+                await context.bot.send_message(chat_id=chat_id, text="Занятий в абонементе: 0. Чтобы приобрести абонемент, свяжитесь с преподавателем.")
 
             # Present options
             keyboard = [
-                [InlineKeyboardButton("Sign Up for New Class", callback_data='NEWCLASS')],
-                [InlineKeyboardButton("Cancel a Class", callback_data='CANCELCLASS')],
+                [InlineKeyboardButton("Записаться на новое занятие", callback_data='NEWCLASS')],
+                [InlineKeyboardButton("Отменить занятие", callback_data='CANCELCLASS')],
             ]
 
             # If user is admin, add the "See my schedule" button
             if is_admin:
-                keyboard.append([InlineKeyboardButton("See my schedule", callback_data='SCHEDULE')])
+                keyboard.append([InlineKeyboardButton("Расписание преподавателя", callback_data='SCHEDULE')])
 
             # Add the Cancel button
-            keyboard.append([InlineKeyboardButton("Cancel", callback_data='CANCEL')])
+            keyboard.append([InlineKeyboardButton("Отмена", callback_data='CANCEL')])
 
             reply_markup = InlineKeyboardMarkup(keyboard)
-            await context.bot.send_message(chat_id=chat_id, text="What would you like to do next?", reply_markup=reply_markup)
+            await context.bot.send_message(chat_id=chat_id, text="Выберите действие:", reply_markup=reply_markup)
 
         else: # User not found scenario
 
             # Set commands for new users
             await context.bot.set_my_commands(
                 [
-                    BotCommand('newrequest', 'Leave a request for first class'),
-                    BotCommand('cancel', 'Cancel the operation')
+                    BotCommand('newrequest', 'Оставить заявку на первое занятие'),
+                    BotCommand('cancel', 'Отменить команду')
                 ],
                 scope=BotCommandScopeChat(update.effective_chat.id)
             )
@@ -117,18 +117,18 @@ async def start(update: Update, context: CallbackContext):
             # Suggest to leave a request as a new user
             await context.bot.send_message(
                 chat_id=chat_id,
-                text="It looks like your username is not in our database yet. Would you like to leave a request for your first class in ΣΙΓΜΑ?"
+                text="Похоже, вашего юзернейма пока нет в нашей базе данных. Хотите оставить заявку на первое занятие в ΣΙΓΜΑ?"
             )
 
             # Option buttons
             keyboard = [
-                [InlineKeyboardButton("Leave a Request", callback_data='NEWREQUEST')],
-                [InlineKeyboardButton("Cancel", callback_data='CANCEL')]
+                [InlineKeyboardButton("Оставить заявку", callback_data='NEWREQUEST')],
+                [InlineKeyboardButton("Отмена", callback_data='CANCEL')]
             ]
 
             reply_markup = InlineKeyboardMarkup(keyboard)
-            await context.bot.send_message(chat_id=chat_id, text="Please choose an option:", reply_markup=reply_markup)
+            await context.bot.send_message(chat_id=chat_id, text="Пожалуйста, выберите действие:", reply_markup=reply_markup)
 
     except Exception as e:
         logging.error(f"Error in start handler: {e}")
-        await context.bot.send_message(chat_id=chat_id, text="An error occurred while fetching your data. Please try again later.")
+        await context.bot.send_message(chat_id=chat_id, text="Произошла ошибка при получении ваших данных. Повторите попытку позже.")

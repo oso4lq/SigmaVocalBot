@@ -28,11 +28,11 @@ ENTER_NAME, ENTER_REQUEST_MESSAGE = range(2)
  # Entry point. Asks the user to enter their name.
 async def newrequest_start(update: Update, context: CallbackContext):
     query = update.callback_query
-    await query.edit_message_text(text="Please enter your name:")
+    await query.edit_message_text(text="Пожалуйста, укажите ваше имя.")
     
     # Set commands relevant to NEWCLASS
     await context.bot.set_my_commands(
-        [BotCommand('cancel', 'Cancel the operation')],
+        [BotCommand('cancel', 'Отменить команду')],
         scope=BotCommandScopeChat(update.effective_chat.id)
     )
 
@@ -43,14 +43,14 @@ async def newrequest_start(update: Update, context: CallbackContext):
 async def enter_name(update: Update, context: CallbackContext):
     name = update.message.text.strip()
     if not name:
-        await update.message.reply_text("You must enter your name before submitting the request.")
+        await update.message.reply_text("Перед отправкой запроса вам необходимо ввести свое имя.")
         return ENTER_NAME
     context.user_data['name'] = name # Save the name
     await update.message.reply_text(
-        "Please enter any message or press 'SKIP' to continue.",
+        "Чтобы продолжить, оставьте дополнительное сообщение или нажмите Пропустить",
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("SKIP", callback_data='SKIP')],
-            [InlineKeyboardButton("Cancel", callback_data='CANCEL')]
+            [InlineKeyboardButton("Пропустить", callback_data='SKIP')],
+            [InlineKeyboardButton("Отмена", callback_data='CANCEL')]
         ])
     )
     return ENTER_REQUEST_MESSAGE
@@ -61,7 +61,7 @@ async def skip_message(update: Update, context: CallbackContext):
     query = update.callback_query
     await query.answer()
     context.user_data['message'] = ''  # Set message as empty
-    await query.edit_message_text(text="Proceeding without an additional message.")
+    await query.edit_message_text(text="Записываю на занятие без дополнительного сообщения.")
     
     # Save the request to Firestore
     user = query.from_user
@@ -78,12 +78,12 @@ async def skip_message(update: Update, context: CallbackContext):
         }
         success = add_new_request(db, request_data)
         if success:
-            await query.message.reply_text("Your request was saved. Please wait until the tutor contacts you.")
+            await query.message.reply_text("Ваша заявка отправлена! Пожалуйста, подождите, пока преподаватель свяжется с вами.")
         else:
-            await query.message.reply_text("There was an error saving your request. Please try again.")
+            await query.message.reply_text("Произошла ошибка при сохранении вашего запроса. Попробуйте ещё раз.")
     except Exception as e:
         logging.error(f"Error in skip_message handler: {e}")
-        await query.message.reply_text("There was an error saving your request. Please try again.")
+        await query.message.reply_text("Произошла ошибка при сохранении вашего запроса. Попробуйте ещё раз.")
 
     # Reset commands based on user status
     await reset_user_commands(update, context)
@@ -112,13 +112,13 @@ async def enter_request_message(update: Update, context: CallbackContext):
         }
         success = add_new_request(db, request_data)
         if success:
-            await update.message.reply_text("Your request was saved. Please wait until the tutor contacts you.")
+            await update.message.reply_text("Ваша заявка отправлена! Пожалуйста, подождите, пока преподаватель свяжется с вами.")
         else:
-            await update.message.reply_text("There was an error saving your request. Please try again.")
+            await update.message.reply_text("Произошла ошибка при сохранении вашего запроса. Попробуйте ещё раз.")
 
     except Exception as e:
         logging.error(f"Error in enter_request_message handler: {e}")
-        await update.message.reply_text("There was an error saving your request. Please try again.")
+        await update.message.reply_text("Произошла ошибка при сохранении вашего запроса. Попробуйте ещё раз.")
 
     # Reset commands based on user status
     await reset_user_commands(update, context)

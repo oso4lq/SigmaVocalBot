@@ -36,11 +36,11 @@ async def cancelclass_start(update: Update, context: CallbackContext):
     else:
         user = update.message.from_user
         chat_id = update.message.chat_id
-        await update.message.reply_text("Choose a class you would like to cancel:")
+        await update.message.reply_text("Выберите занятие, которое вы хотите отменить:")
 
     # Set commands relevant to CANCELCLASS
     await context.bot.set_my_commands(
-        [BotCommand('cancel', 'Cancel the operation')],
+        [BotCommand('cancel', 'Отменить команду')],
         scope=BotCommandScopeChat(chat_id)
     )
 
@@ -48,7 +48,7 @@ async def cancelclass_start(update: Update, context: CallbackContext):
     db = context.bot_data['db']
     user_data = get_user_by_telegram_username(db, user.username)
     if not user_data:
-        await context.bot.send_message(chat_id=chat_id, text="User data not found.")
+        await context.bot.send_message(chat_id=chat_id, text="Данные пользователя не найдены.")
         return ConversationHandler.END
 
     classes_ids = user_data.get('classes', [])
@@ -62,16 +62,16 @@ async def cancelclass_start(update: Update, context: CallbackContext):
             utc_start = datetime.fromisoformat(class_data['startdate'].replace('Z', '+00:00'))
             spb_start = utc_start.astimezone(ST_PETERSBURG)
             formatted_start = spb_start.strftime('%d.%m.%Y %H:%M')
-            class_info = f"{formatted_start} | Status: {class_data['status']}"
+            class_info = f"{formatted_start} | статус: {class_data['status']}"
             classes_buttons.append(
                 [InlineKeyboardButton(class_info, callback_data=f"CANCEL_{class_id}")]
             )
-        classes_buttons.append([InlineKeyboardButton("Cancel", callback_data='CANCEL')])
+        classes_buttons.append([InlineKeyboardButton("Отмена", callback_data='CANCEL')])
         reply_markup = InlineKeyboardMarkup(classes_buttons)
-        await query.edit_message_text(text="Choose a class you would like to cancel:", reply_markup=reply_markup)
+        await query.edit_message_text(text="Выберите занятие, которое вы хотите отменить:", reply_markup=reply_markup)
         return SELECT_CLASS_TO_CANCEL
     else:
-        await query.edit_message_text(text="You don't have any classes signed up for.")
+        await query.edit_message_text(text="У вас нет занятий.")
         return ConversationHandler.END
 
 
@@ -92,7 +92,7 @@ async def select_class_to_cancel(update: Update, context: CallbackContext):
         utc_start = datetime.fromisoformat(class_data['startdate'].replace('Z', '+00:00'))
         spb_start = utc_start.astimezone(ST_PETERSBURG)
         formatted_start = spb_start.strftime('%d.%m.%Y %H:%M')
-        class_info = f"{formatted_start} | Status: {class_data['status']}"
+        class_info = f"{formatted_start} | статус: {class_data['status']}"
 
         # Calculate hours difference
         utc_now = datetime.utcnow().replace(tzinfo=ZoneInfo('UTC'))
@@ -106,19 +106,19 @@ async def select_class_to_cancel(update: Update, context: CallbackContext):
             class_data.get('status') == 'подтверждено'
         ):
             message = (
-                "The teacher has already confirmed this class and it starts in less than 24 hours. "
-                "By canceling this class, you will lose the class from your membership."
+                "Преподаватель уже подтвердил это занятие, и до его начала остаётся менее 24 часов. "
+                "Отменив это занятие, вы потеряете занятие из абонемента."
             )
         elif (
             class_data.get('isMembershipUsed', False) and
             class_data.get('status') != 'выполнено'
         ):
-            message = "You can cancel a lesson without losing your membership points."
+            message = "Вы можете отменить урок без потери занятия из абонемента."
         else:
             message = ""
 
         # Append the message if applicable
-        full_text = f"Are you sure you want to cancel this class?\n{class_info}"
+        full_text = f"Вы уверены, что хотите отменить занятие?\n{class_info}"
         if message:
             full_text += f"\n\n{message}"
 
@@ -126,14 +126,14 @@ async def select_class_to_cancel(update: Update, context: CallbackContext):
         await query.edit_message_text(
             text=full_text,
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("Yes, Cancel", callback_data='CONFIRM_CANCEL')],
-                [InlineKeyboardButton("No, Go Back", callback_data='BACK_TO_CLASS_LIST')],
-                [InlineKeyboardButton("Cancel", callback_data='CANCEL')]
+                [InlineKeyboardButton("Да, отменить", callback_data='CONFIRM_CANCEL')],
+                [InlineKeyboardButton("Нет, вернуться", callback_data='BACK_TO_CLASS_LIST')],
+                [InlineKeyboardButton("Отмена", callback_data='CANCEL')]
             ])
         )
         return CONFIRM_CANCELLATION
     else:
-        await query.edit_message_text(text="Class not found.")
+        await query.edit_message_text(text="Занятие не найдено.")
         return ConversationHandler.END
 
 
@@ -144,7 +144,7 @@ async def confirm_cancellation(update: Update, context: CallbackContext):
     class_id = context.user_data.get('class_id_to_cancel')
     user = query.from_user
     if not class_id:
-        await query.edit_message_text(text="No class selected for cancellation.")
+        await query.edit_message_text(text="Не выбрано занятие для отмены.")
         return ConversationHandler.END
 
     db = context.bot_data['db']
@@ -152,7 +152,7 @@ async def confirm_cancellation(update: Update, context: CallbackContext):
     # Get user data
     user_data = get_user_by_telegram_username(db, user.username)
     if not user_data:
-        await query.edit_message_text(text="User data not found.")
+        await query.edit_message_text(text="Данные пользователя не найдены.")
         return ConversationHandler.END
 
     try:
@@ -160,7 +160,7 @@ async def confirm_cancellation(update: Update, context: CallbackContext):
         class_doc_ref = db.collection('classes').document(class_id)
         class_doc = class_doc_ref.get()
         if not class_doc.exists:
-            await query.edit_message_text(text="Class not found.")
+            await query.edit_message_text(text="Занятие не найдено.")
             return ConversationHandler.END
         class_data = class_doc.to_dict()
 
@@ -198,11 +198,11 @@ async def confirm_cancellation(update: Update, context: CallbackContext):
         # Commit the batch
         batch.commit()
 
-        await query.edit_message_text(text="Your class has been cancelled.")
+        await query.edit_message_text(text="Ваше занятие отменено.")
 
     except Exception as e:
         logging.error(f"Error in confirm_cancellation handler: {e}")
-        await query.edit_message_text(text="There was an error cancelling your class. Please try again.")
+        await query.edit_message_text(text="Произошла ошибка при отмене вашего занятия. Попробуйте ещё раз.")
 
     # Reset commands based on user status
     await reset_user_commands(update, context)
@@ -223,7 +223,7 @@ async def back_to_class_list(update: Update, context: CallbackContext):
     db = context.bot_data['db']
     user_data = get_user_by_telegram_username(db, user.username)
     if not user_data:
-        await query.edit_message_text(text="User data not found. Please ensure your Telegram username is linked to your account.")
+        await query.edit_message_text(text="Данные пользователя не найдены. Убедитесь, что ваш Telegram связан с учётной записью.")
         return ConversationHandler.END
 
     classes_ids = user_data.get('classes', [])
@@ -241,10 +241,10 @@ async def back_to_class_list(update: Update, context: CallbackContext):
 
         buttons.append([InlineKeyboardButton("Cancel", callback_data='CANCEL')])
         reply_markup = InlineKeyboardMarkup(buttons)
-        await query.edit_message_text(text="Select a class to cancel:", reply_markup=reply_markup)
+        await query.edit_message_text(text="Выберите занятие, которое вы хотите отменить:", reply_markup=reply_markup)
         return SELECT_CLASS_TO_CANCEL
     else:
-        await query.edit_message_text(text="You don't have any classes scheduled.")
+        await query.edit_message_text(text="У вас нет занятий.")
         return ConversationHandler.END
 
 

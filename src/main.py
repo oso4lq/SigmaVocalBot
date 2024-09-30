@@ -78,13 +78,12 @@ application.add_handler(schedule_conv_handler())
 # Button Callback Handler (Handles generic buttons not managed by ConversationHandlers)
 application.add_handler(CallbackQueryHandler(button_handler, pattern='^(CANCEL|SKIP)$'))
 
-# Error Handler
+# Error Handler. Log the error and send a telegram message to notify the developer.
 async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
-    """Log the error and send a telegram message to notify the developer."""
     logger.error(msg="Exception while handling an update:", exc_info=context.error)
     # Notify user
     if isinstance(update, Update) and update.effective_chat:
-        await context.bot.send_message(chat_id=update.effective_chat.id, text="An unexpected error occurred. Please try again later.")
+        await context.bot.send_message(chat_id=update.effective_chat.id, text="Произошла непредвиденная ошибка. Повторите попытку позже.")
 
 application.add_error_handler(error_handler)
 

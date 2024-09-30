@@ -30,15 +30,15 @@ SELECT_DATE, SELECT_TIME, ENTER_MESSAGE = range(3)
 async def newclass_start(update: Update, context: CallbackContext):
     if update.callback_query:
         query = update.callback_query
-        await query.edit_message_text(text="Please select a day.")
+        await query.edit_message_text(text="Выберите день")
         chat_id = query.message.chat_id
     else:
-        await update.message.reply_text("Please select a day.")
+        await update.message.reply_text("Выберите день")
         chat_id = update.message.chat_id
 
     # Set commands relevant to NEWCLASS
     await context.bot.set_my_commands(
-        [BotCommand('cancel', 'Cancel the operation')],
+        [BotCommand('cancel', 'Отменить команду')],
         scope=BotCommandScopeChat(chat_id)
     )
 
@@ -54,10 +54,10 @@ async def newclass_start(update: Update, context: CallbackContext):
                 [InlineKeyboardButton(display_date_str, callback_data=f"DATE_{callback_date_str}")]
             )
 
-    dates_buttons.append([InlineKeyboardButton("Cancel", callback_data='CANCEL')])
+    dates_buttons.append([InlineKeyboardButton("Отмена", callback_data='CANCEL')])
     reply_markup = InlineKeyboardMarkup(dates_buttons)
     # await context.bot.send_message(chat_id=query.message.chat_id, text="Available dates:", reply_markup=reply_markup)
-    await context.bot.send_message(chat_id=chat_id, text="Available dates:", reply_markup=reply_markup)
+    await context.bot.send_message(chat_id=chat_id, text="Доступные даты:", reply_markup=reply_markup)
     return SELECT_DATE
 
 
@@ -69,7 +69,7 @@ async def select_date(update: Update, context: CallbackContext):
     logging.info(f"Selected date: {selected_date}")
     selected_date_display = datetime.strptime(selected_date, '%Y-%m-%d').strftime('%d.%m.%Y')
 
-    await query.edit_message_text(text=f"Selected date: {selected_date_display}\nPlease select a time slot.")
+    await query.edit_message_text(text=f"Выбранная дата: {selected_date_display}\nВыберите время")
 
     # Generate time slots
     times_buttons = []
@@ -96,13 +96,13 @@ async def select_date(update: Update, context: CallbackContext):
 
     if times_buttons:
         # Add 'Back to selecting a date' button
-        times_buttons.append([InlineKeyboardButton("Back to selecting a date", callback_data='BACK_TO_DATE')])
-        times_buttons.append([InlineKeyboardButton("Cancel", callback_data='CANCEL')])
+        times_buttons.append([InlineKeyboardButton("Назад к выбору даты", callback_data='BACK_TO_DATE')])
+        times_buttons.append([InlineKeyboardButton("Отмена", callback_data='CANCEL')])
         reply_markup = InlineKeyboardMarkup(times_buttons)
-        await context.bot.send_message(chat_id=query.message.chat_id, text="Available time slots:", reply_markup=reply_markup)
+        await context.bot.send_message(chat_id=query.message.chat_id, text="Доступные слоты:", reply_markup=reply_markup)
     else:
         # If no time slots are available
-        await context.bot.send_message(chat_id=query.message.chat_id, text="No available time slots for this date. Please select another date.")
+        await context.bot.send_message(chat_id=query.message.chat_id, text="На эту дату нет доступных слотов. Выберите другую дату.")
         # Return to date selection
         return await back_to_date_selection(update, context)
 
@@ -118,12 +118,12 @@ async def select_time(update: Update, context: CallbackContext):
 
     # Present message input with SKIP button
     keyboard = [
-        [InlineKeyboardButton("SKIP", callback_data='SKIP')],
-        [InlineKeyboardButton("Cancel", callback_data='CANCEL')]
+        [InlineKeyboardButton("Пропустить", callback_data='SKIP')],
+        [InlineKeyboardButton("Отмена", callback_data='CANCEL')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await query.edit_message_text(
-        text=f"Selected time: {selected_time}\nPlease enter any additional message or press 'SKIP' to continue.",
+        text=f"Выбранное время: {selected_time}\nЧтобы продолжить, оставьте дополнительное сообщение или нажмите Пропустить.",
         reply_markup=reply_markup
     )
     return ENTER_MESSAGE
@@ -134,7 +134,7 @@ async def skip_message(update: Update, context: CallbackContext):
     query = update.callback_query
     await query.answer()
     context.user_data['message'] = ''  # Set message as empty
-    await query.edit_message_text(text="Proceeding without an additional message.")
+    await query.edit_message_text(text="Записываю на занятие без дополнительного сообщения.")
     
     # Proceed to save the class
     user = query.from_user
@@ -144,7 +144,7 @@ async def skip_message(update: Update, context: CallbackContext):
         # Get user data from Firestore
         user_data = get_user_by_telegram_username(db, user.username)
         if not user_data:
-            await query.message.reply_text("User data not found. Please ensure your Telegram username is linked to your account.")
+            await query.message.reply_text("Данные пользователя не найдены. Убедитесь, что ваш Telegram связан с учётной записью.")
             return ConversationHandler.END
 
         # Check membership points
@@ -196,11 +196,11 @@ async def skip_message(update: Update, context: CallbackContext):
         # Commit the batch
         batch.commit()
 
-        await query.message.reply_text("Your class was saved. Please wait for the confirmation.")
+        await query.message.reply_text("Вы успешно записались на следующее занятие в ΣΙΓΜΑ! Пожалуйста, подождите, пока преподаватель подтвердит занятие.")
 
     except Exception as e:
         logging.error(f"Error in skip_message handler: {e}")
-        await query.message.reply_text("There was an error saving your class. Please try again.")
+        await query.message.reply_text("Произошла ошибка при сохранении вашего занятия. Попробуйте ещё раз.")
 
     # Reset commands based on user status
     await reset_user_commands(update, context)
@@ -227,7 +227,7 @@ async def enter_message(update: Update, context: CallbackContext):
         # Get user data from Firestore
         user_data = get_user_by_telegram_username(db, user.username)
         if not user_data:
-            await update.message.reply_text("User data not found. Please ensure your Telegram username is linked to your account.")
+            await update.message.reply_text("Данные пользователя не найдены. Убедитесь, что ваш Telegram связан с учётной записью.")
             return ConversationHandler.END
 
         # Check membership points
@@ -279,11 +279,11 @@ async def enter_message(update: Update, context: CallbackContext):
         # Commit the batch
         batch.commit()
 
-        await update.message.reply_text("Your class was saved. Please wait for the confirmation.")
+        await update.message.reply_text("Вы успешно записались на следующее занятие в ΣΙΓΜΑ! Пожалуйста, подождите, пока преподаватель подтвердит занятие.")
 
     except Exception as e:
         logging.error(f"Error in enter_message handler: {e}")
-        await update.message.reply_text("There was an error saving your class. Please try again.")
+        await update.message.reply_text("Произошла ошибка при сохранении вашего занятия. Попробуйте ещё раз.")
 
     # Reset commands based on user status
     await reset_user_commands(update, context)
@@ -298,7 +298,7 @@ async def enter_message(update: Update, context: CallbackContext):
 async def back_to_date_selection(update: Update, context: CallbackContext):
     query = update.callback_query
     await query.answer()
-    await query.edit_message_text(text="Please select a day.")
+    await query.edit_message_text(text="Выберите день")
 
     # Generate available dates
     dates_buttons = []
@@ -312,9 +312,9 @@ async def back_to_date_selection(update: Update, context: CallbackContext):
                 [InlineKeyboardButton(display_date_str, callback_data=f"DATE_{callback_date_str}")]
             )
 
-    dates_buttons.append([InlineKeyboardButton("Cancel", callback_data='CANCEL')])
+    dates_buttons.append([InlineKeyboardButton("Отмена", callback_data='CANCEL')])
     reply_markup = InlineKeyboardMarkup(dates_buttons)
-    await context.bot.send_message(chat_id=query.message.chat_id, text="Available dates:", reply_markup=reply_markup)
+    await context.bot.send_message(chat_id=query.message.chat_id, text="Доступные даты:", reply_markup=reply_markup)
     return SELECT_DATE
 
 

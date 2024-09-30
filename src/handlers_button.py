@@ -19,11 +19,11 @@ async def button_handler(update: Update, context: CallbackContext):
 
     if data == 'CANCEL':
         # Send a cancellation message
-        await query.edit_message_text(text="Operation cancelled.")
+        await query.edit_message_text(text="Команда отменена.")
 
         # Reset commands to default (/start)
         await context.bot.set_my_commands(
-            [BotCommand('start', 'Start the bot')],
+            [BotCommand('start', 'Запустить бота')],
             scope=BotCommandScopeChat(update.effective_chat.id)
         )
         return ConversationHandler.END
@@ -32,17 +32,17 @@ async def button_handler(update: Update, context: CallbackContext):
         pass
     else:
         # Handle other generic buttons if any
-        await query.edit_message_text(text="Unknown action. Please try again.")
+        await query.edit_message_text(text="Неизвестное действие. Попробуйте ещё раз.")
         return ConversationHandler.END
 
 
 # Runs the "/cancel" command
 async def cancel_command(update: Update, context: CallbackContext):
-    await update.message.reply_text("Operation cancelled.")
+    await update.message.reply_text("Команда отменена.")
 
     # Reset commands to default (/start)
     await context.bot.set_my_commands(
-        [BotCommand('start', 'Start the bot')],
+        [BotCommand('start', 'Запустить бота')],
         scope=BotCommandScopeChat(update.effective_chat.id)
     )
     return ConversationHandler.END
