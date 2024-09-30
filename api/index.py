@@ -10,13 +10,14 @@ from telegram.ext import (
 from telegram import Update
 from fastapi import FastAPI, Request
 from dotenv import load_dotenv
-from src.firebase_utils import initialize_firebase
-from src.handlers_button import button_handler, cancel_command
-from src.handlers_start import start
-from src.handlers_newclass import newclass_conv_handler
-from src.handlers_newrequest import newrequest_conv_handler
-from src.handlers_cancelclass import cancelclass_conv_handler
-from src.handlers_schedule import schedule_conv_handler
+
+from .src.firebase_utils import initialize_firebase
+from .src.handlers_button import button_handler, cancel_command
+from .src.handlers_start import start
+from .src.handlers_newclass import newclass_conv_handler
+from .src.handlers_newrequest import newrequest_conv_handler
+from .src.handlers_cancelclass import cancelclass_conv_handler
+from .src.handlers_schedule import schedule_conv_handler
 
 # Load environment variables
 load_dotenv()
