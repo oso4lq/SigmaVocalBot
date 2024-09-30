@@ -8,19 +8,18 @@ import logging
 from dotenv import load_dotenv
 from telegram import Update
 from telegram.ext import (
-    ApplicationBuilder, 
-    CommandHandler, 
     CallbackQueryHandler,
-    ContextTypes
-)
-from handlers import (
-    start, 
-    button_handler,
-    newclass_conv_handler, 
-    newrequest_conv_handler,
-    cancelclass_conv_handler
+    ApplicationBuilder,
+    CommandHandler,
+    ContextTypes,
 )
 from firebase_utils import initialize_firebase
+from handlers_button import button_handler, cancel_command
+from handlers_start import start
+from handlers_newclass import newclass_conv_handler
+from handlers_newrequest import newrequest_conv_handler
+from handlers_cancelclass import cancelclass_conv_handler
+from handlers_schedule import schedule_conv_handler
 
 # Load environment variables from .env file
 load_dotenv()
@@ -49,23 +48,20 @@ logger = logging.getLogger(__name__)
 # Initialize Firebase
 db = initialize_firebase(GOOGLE_APPLICATION_CREDENTIALS)
 
-# Initialize the Telegram Bot 13.15
-# updater = Updater(token=TELEGRAM_BOT_TOKEN, use_context=True)
-# dispatcher = updater.dispatcher
-
 # Initialize the Telegram Bot Application
 application = ApplicationBuilder().token(TELEGRAM_BOT_TOKEN).build()
 
 # Store db in bot_data for access in handlers
 application.bot_data['db'] = db
 
+
 # Register Handlers
 
 # START Command Handler
 application.add_handler(CommandHandler('start', start))
 
-# Button Callback Handler
-application.add_handler(CallbackQueryHandler(button_handler))
+# CANCEL Command handler
+application.add_handler(CommandHandler('cancel', cancel_command))
 
 # NEWCLASS Conversation Handler
 application.add_handler(newclass_conv_handler())
@@ -76,18 +72,18 @@ application.add_handler(newrequest_conv_handler())
 # CANCELCLASS Conversation Handler
 application.add_handler(cancelclass_conv_handler())
 
-# CANCEL Command Handler (optional if you have a separate /cancel command)
-# Uncomment below if you want to handle /cancel command globally
-# from telegram.ext import CommandHandler
-# dispatcher.add_handler(CommandHandler('cancel', cancel))
+# SCHEDULE Conversation Handler
+application.add_handler(schedule_conv_handler())
 
-# Error Handler
+# Button Callback Handler (Handles generic buttons not managed by ConversationHandlers)
+application.add_handler(CallbackQueryHandler(button_handler, pattern='^(CANCEL|SKIP)$'))
+
+# Error Handler. Log the error and send a telegram message to notify the developer.
 async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
-    """Log the error and send a telegram message to notify the developer."""
     logger.error(msg="Exception while handling an update:", exc_info=context.error)
     # Notify user
     if isinstance(update, Update) and update.effective_chat:
-        await context.bot.send_message(chat_id=update.effective_chat.id, text="An unexpected error occurred. Please try again later.")
+        await context.bot.send_message(chat_id=update.effective_chat.id, text="Произошла непредвиденная ошибка. Повторите попытку позже.")
 
 application.add_error_handler(error_handler)
 
