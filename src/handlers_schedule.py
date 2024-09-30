@@ -14,9 +14,9 @@ from telegram.ext import (
     CallbackContext,
     CommandHandler,
 )
-from .firebase_utils import get_classes_by_date, get_user_by_id, update_class_status
-from .handlers_button import button_handler, cancel_command
-from .utils import ST_PETERSBURG
+from firebase_utils import get_classes_by_date, get_user_by_id, update_class_status
+from handlers_button import button_handler, cancel_command
+from utils import ST_PETERSBURG
 
 # Define Conversation States
 VIEW_SCHEDULE, EDIT_CLASS, EDIT_STATUS = range(3)
@@ -73,7 +73,7 @@ async def display_schedule(chat_id, context: CallbackContext):
     navigation_buttons = [
         InlineKeyboardButton("<", callback_data='PREV_DAY'),
         InlineKeyboardButton(">", callback_data='NEXT_DAY'),
-        InlineKeyboardButton("Cancel", callback_data='CANCEL')
+        InlineKeyboardButton("Отмена", callback_data='CANCEL')
     ]
 
     buttons.append(navigation_buttons)

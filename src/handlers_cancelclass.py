@@ -16,10 +16,10 @@ from telegram.ext import (
     CallbackContext,
     CommandHandler,
 )
-from .firebase_utils import get_user_by_telegram_username, get_classes_by_ids
-from .handlers_button import button_handler, cancel_command
-from .utils import reset_user_commands, ST_PETERSBURG
-from .handlers_start import start
+from firebase_utils import get_user_by_telegram_username, get_classes_by_ids
+from handlers_button import button_handler, cancel_command
+from utils import reset_user_commands, ST_PETERSBURG
+from handlers_start import start
 
 
 # Define Conversation States for CANCELCLASS
@@ -239,7 +239,7 @@ async def back_to_class_list(update: Update, context: CallbackContext):
             button_text = f"{formatted_start} | Status: {class_data['status']}"
             buttons.append([InlineKeyboardButton(button_text, callback_data=f"CANCEL_{class_data['id']}")])
 
-        buttons.append([InlineKeyboardButton("Cancel", callback_data='CANCEL')])
+        buttons.append([InlineKeyboardButton("Отмена", callback_data='CANCEL')])
         reply_markup = InlineKeyboardMarkup(buttons)
         await query.edit_message_text(text="Выберите занятие, которое вы хотите отменить:", reply_markup=reply_markup)
         return SELECT_CLASS_TO_CANCEL
